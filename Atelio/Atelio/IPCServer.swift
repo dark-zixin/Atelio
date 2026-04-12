@@ -125,6 +125,8 @@ class IPCServer {
             return handleScreen(request)
         case .wait:
             return handleWait(request)
+        case .list:
+            return handleList(request)
         }
     }
 
@@ -141,7 +143,8 @@ class IPCServer {
                 return
             }
             do {
-                let session = try self.manager.open(name: request.name, directory: dir, command: cmd)
+                let purpose = request.purpose ?? ""
+                let session = try self.manager.open(name: request.name, purpose: purpose, directory: dir, command: cmd)
                 // 等待 shell 初始 prompt 出現才回傳（確保 session 就緒）
                 session.waitForReady(timeout: 5) { [weak self] ready in
                     if ready {
@@ -298,6 +301,31 @@ class IPCServer {
         if waitResult == .timedOut {
             response = IPCResponse(success: false, message: "IPC 超時")
         }
+        return response
+    }
+
+    private func handleList(_ request: IPCRequest) -> IPCResponse {
+        let semaphore = DispatchSemaphore(value: 0)
+        var response = IPCResponse(success: false, message: "未知錯誤")
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                response = IPCResponse(success: false, message: "Server 已關閉")
+                semaphore.signal()
+                return
+            }
+            do {
+                let infos = self.manager.list()
+                let json = try JSONEncoder().encode(infos)
+                let jsonStr = String(data: json, encoding: .utf8) ?? "[]"
+                response = IPCResponse(success: true, output: jsonStr)
+            } catch {
+                response = IPCResponse(success: false, message: error.localizedDescription)
+            }
+            semaphore.signal()
+        }
+
+        semaphore.wait()
         return response
     }
 }

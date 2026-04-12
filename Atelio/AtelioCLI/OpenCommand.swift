@@ -17,8 +17,11 @@ struct OpenCommand: ParsableCommand {
     @Option(name: .long, help: "啟動指令")
     var cmd: String = "/bin/zsh"
 
+    @Option(name: .long, help: "用途描述")
+    var purpose: String = ""
+
     func run() throws {
-        let request = IPCRequest(command: .open, name: name, dir: dir, cmd: cmd)
+        let request = IPCRequest(command: .open, name: name, dir: dir, cmd: cmd, purpose: purpose)
         let response = try IPCClient.send(request)
 
         if response.success {

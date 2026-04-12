@@ -8,6 +8,8 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     let id = UUID()
     let name: String
+    let purpose: String
+    let createdAt: Date
 
     /// SwiftTerm 終端 view（使用 CaptureTerminalView 攔截輸出）
     let terminalView: CaptureTerminalView
@@ -23,8 +25,16 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     // MARK: - 初始化
 
-    init(name: String, directory: String, command: String) {
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        return f
+    }()
+
+    init(name: String, purpose: String, directory: String, command: String) {
         self.name = name
+        self.purpose = purpose
+        self.createdAt = Date()
         self.workingDirectory = directory
         self.terminalView = CaptureTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
 
@@ -123,9 +133,11 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         let pid = terminalView.process?.shellPid ?? 0
         return SessionInfo(
             name: name,
+            purpose: purpose,
             isRunning: isRunning,
             pid: pid != 0 ? pid : nil,
-            workingDirectory: workingDirectory
+            workingDirectory: workingDirectory,
+            createdAt: Self.dateFormatter.string(from: createdAt)
         )
     }
 

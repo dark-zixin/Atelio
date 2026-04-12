@@ -8,7 +8,7 @@ struct ContentView: View {
             if manager.sessions.isEmpty {
                 emptyState
             } else {
-                terminalTabs
+                WorkspaceView(manager: manager)
             }
         }
         .frame(minWidth: 600, minHeight: 400)
@@ -29,22 +29,5 @@ struct ContentView: View {
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - 終端分頁
-
-    private var terminalTabs: some View {
-        TabView {
-            ForEach(sortedSessions, id: \.name) { session in
-                TerminalViewWrapper(session: session)
-                    .tabItem {
-                        Label(session.name, systemImage: "terminal")
-                    }
-            }
-        }
-    }
-
-    private var sortedSessions: [TerminalSession] {
-        manager.sessions.values.sorted { $0.name < $1.name }
     }
 }

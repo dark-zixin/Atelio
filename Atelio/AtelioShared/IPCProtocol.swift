@@ -4,7 +4,7 @@ import Foundation
 
 public struct IPCRequest: Codable {
     public enum Command: String, Codable {
-        case open, dispatch, status, close, screen, wait
+        case open, dispatch, status, close, screen, wait, list
     }
 
     public let command: Command
@@ -14,8 +14,9 @@ public struct IPCRequest: Codable {
     public var text: String?
     public var timeout: Int?
     public var confirmKey: String?
+    public var purpose: String?
 
-    public init(command: Command, name: String, dir: String? = nil, cmd: String? = nil, text: String? = nil, timeout: Int? = nil, confirmKey: String? = nil) {
+    public init(command: Command, name: String, dir: String? = nil, cmd: String? = nil, text: String? = nil, timeout: Int? = nil, confirmKey: String? = nil, purpose: String? = nil) {
         self.command = command
         self.name = name
         self.dir = dir
@@ -23,6 +24,7 @@ public struct IPCRequest: Codable {
         self.text = text
         self.timeout = timeout
         self.confirmKey = confirmKey
+        self.purpose = purpose
     }
 }
 

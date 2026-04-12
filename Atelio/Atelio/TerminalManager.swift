@@ -11,13 +11,23 @@ class TerminalManager {
 
     // MARK: - 操作
 
+    /// 列出所有 session 狀態
+    func list() -> [SessionInfo] {
+        sessions.values
+            .sorted { $0.createdAt < $1.createdAt }
+            .map { $0.sessionInfo() }
+    }
+
     /// 開啟新的終端 session
-    func open(name: String, directory: String, command: String) throws -> TerminalSession {
+    func open(name: String, purpose: String, directory: String, command: String) throws -> TerminalSession {
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else {
+            throw ManagerError.invalidName
+        }
         guard sessions[name] == nil else {
             throw ManagerError.sessionExists(name)
         }
 
-        let session = TerminalSession(name: name, directory: directory, command: command)
+        let session = TerminalSession(name: name, purpose: purpose, directory: directory, command: command)
         sessions[name] = session
         return session
     }
@@ -102,12 +112,14 @@ enum ManagerError: Error, LocalizedError {
     case sessionExists(String)
     case sessionNotFound(String)
     case sessionNotRunning(String)
+    case invalidName
 
     var errorDescription: String? {
         switch self {
         case .sessionExists(let name): return "Session '\(name)' 已存在"
         case .sessionNotFound(let name): return "找不到 session '\(name)'"
         case .sessionNotRunning(let name): return "Session '\(name)' 已停止"
+        case .invalidName: return "Session 名稱不可為空"
         }
     }
 }

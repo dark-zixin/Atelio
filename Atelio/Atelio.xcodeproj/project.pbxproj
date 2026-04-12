@@ -7,12 +7,30 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		201761B72D2C04C33A824249 /* PreviewContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 874A9BDB0C62E94092277637 /* PreviewContentView.swift */; };
+		2061D5CA5C0D77C3F3BB1817 /* TitleBarSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F52EA62B0B839ABBFAE9D4A /* TitleBarSnapshotTests.swift */; };
+		2D4F1AEDD888EA082FFDD3EE /* WorkspacePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFCFBFCA470963698C713C6D /* WorkspacePreviewView.swift */; };
+		3040648AAF6153F964D659D5 /* LayoutSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27255914750C667606CEA5AC /* LayoutSnapshotTests.swift */; };
 		42A0EC492F8ADDA9004D2C0C /* AtelioShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; };
 		42A0EC4A2F8ADDA9004D2C0C /* AtelioShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		42A0EC502F8ADF30004D2C0C /* AtelioShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; };
 		42A0EC512F8ADF30004D2C0C /* AtelioShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		42A0EC582F8AE0A4004D2C0C /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 42A0EC572F8AE0A4004D2C0C /* SwiftTerm */; };
 		42A0EC5A2F8AE0B1004D2C0C /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = 42A0EC592F8AE0B1004D2C0C /* ArgumentParser */; };
+		460181AEC02B321DDCEDBFF0 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3E1F98A78C0D4E0261CB8AC2 /* Cocoa.framework */; };
+		68B2CA1C0A46EC01153EF054 /* WindowState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C14E902DB322536CFE759ADF /* WindowState.swift */; };
+		6A6F78D9C30EFD5B04980666 /* LayoutPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FB43D18B837B9BAB1BF9AE /* LayoutPickerView.swift */; };
+		72E92EE512B17BE855B4DAF5 /* MinimizedBarSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA3A55F697EE90D81837CF22 /* MinimizedBarSnapshotTests.swift */; };
+		8BF61478F531FE82404ACEB4 /* MinimizedBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D4CA9A6966D66487B05139 /* MinimizedBar.swift */; };
+		8F4D008DF868E6E4E555A41E /* AtelioPreviewApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3091D2C701661D7B3F6DA01B /* AtelioPreviewApp.swift */; };
+		A29DE825650FF88FB4B5E98B /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = EA20090965BF6504194E6A25 /* SnapshotTesting */; };
+		ACE8FD995BBF22FF0ED573AA /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3E1F98A78C0D4E0261CB8AC2 /* Cocoa.framework */; };
+		AE790E27C1D7A3F70CBEB3A3 /* FakeTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BBB0438069DBE282359237F /* FakeTerminalView.swift */; };
+		B641034C908C669F6D3E87E4 /* LayoutTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B3C9895DA69D8C723F286F /* LayoutTemplate.swift */; };
+		C9F930C02385E1F30D43B620 /* WorkspaceSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47A6B7715830882BD2873E2D /* WorkspaceSnapshotTests.swift */; };
+		CE64B2B862C47A30C4BDC178 /* SanitySnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB1461FED8B74FCBFF51767C /* SanitySnapshotTests.swift */; };
+		DD6DB0AC5B65D5C000BCB284 /* TerminalTitleBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB95293FE9A2E3C2C7DE4290 /* TerminalTitleBar.swift */; };
+		EE2FF52E2F915CC2D4F910A1 /* LayoutPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CAA1D950C071390240D1A3 /* LayoutPreviewView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +47,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 42A0EC402F8ADDA9004D2C0C;
 			remoteInfo = AtelioShared;
+		};
+		4810941829F98162228664B5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 42A0EC1B2F8ADD1B004D2C0C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 42A0EC222F8ADD1B004D2C0C;
+			remoteInfo = Atelio;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -67,9 +92,27 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0BBB0438069DBE282359237F /* FakeTerminalView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FakeTerminalView.swift; sourceTree = "<group>"; };
+		1F52EA62B0B839ABBFAE9D4A /* TitleBarSnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TitleBarSnapshotTests.swift; sourceTree = "<group>"; };
+		27255914750C667606CEA5AC /* LayoutSnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LayoutSnapshotTests.swift; sourceTree = "<group>"; };
+		28FB43D18B837B9BAB1BF9AE /* LayoutPickerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LayoutPickerView.swift; path = Atelio/LayoutPickerView.swift; sourceTree = SOURCE_ROOT; };
+		3091D2C701661D7B3F6DA01B /* AtelioPreviewApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AtelioPreviewApp.swift; sourceTree = "<group>"; };
+		333AF6AB537A7D0517DCC5F7 /* AtelioPreview.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AtelioPreview.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3E1F98A78C0D4E0261CB8AC2 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		42A0EC232F8ADD1B004D2C0C /* Atelio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Atelio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		42A0EC352F8ADD7C004D2C0C /* AtelioCLI */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = AtelioCLI; sourceTree = BUILT_PRODUCTS_DIR; };
 		42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = AtelioShared.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		47A6B7715830882BD2873E2D /* WorkspaceSnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkspaceSnapshotTests.swift; sourceTree = "<group>"; };
+		50CAA1D950C071390240D1A3 /* LayoutPreviewView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LayoutPreviewView.swift; sourceTree = "<group>"; };
+		6548442F10E77594DC0874B0 /* AtelioTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AtelioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		73B3C9895DA69D8C723F286F /* LayoutTemplate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LayoutTemplate.swift; path = Atelio/LayoutTemplate.swift; sourceTree = SOURCE_ROOT; };
+		78D4CA9A6966D66487B05139 /* MinimizedBar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MinimizedBar.swift; path = Atelio/MinimizedBar.swift; sourceTree = SOURCE_ROOT; };
+		874A9BDB0C62E94092277637 /* PreviewContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PreviewContentView.swift; sourceTree = "<group>"; };
+		AFCFBFCA470963698C713C6D /* WorkspacePreviewView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkspacePreviewView.swift; sourceTree = "<group>"; };
+		C14E902DB322536CFE759ADF /* WindowState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WindowState.swift; path = Atelio/WindowState.swift; sourceTree = SOURCE_ROOT; };
+		CB95293FE9A2E3C2C7DE4290 /* TerminalTitleBar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TerminalTitleBar.swift; path = Atelio/TerminalTitleBar.swift; sourceTree = SOURCE_ROOT; };
+		DA3A55F697EE90D81837CF22 /* MinimizedBarSnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MinimizedBarSnapshotTests.swift; sourceTree = "<group>"; };
+		FB1461FED8B74FCBFF51767C /* SanitySnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SanitySnapshotTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -91,6 +134,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		05B0AFB508E1DA18049952CD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				460181AEC02B321DDCEDBFF0 /* Cocoa.framework in Frameworks */,
+				A29DE825650FF88FB4B5E98B /* SnapshotTesting in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		42A0EC202F8ADD1B004D2C0C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -116,9 +168,31 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		637096FD8E84824EF357790A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ACE8FD995BBF22FF0ED573AA /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		005CAF0E9D38764C368683F9 /* AtelioPreview */ = {
+			isa = PBXGroup;
+			children = (
+				3091D2C701661D7B3F6DA01B /* AtelioPreviewApp.swift */,
+				874A9BDB0C62E94092277637 /* PreviewContentView.swift */,
+				73B3C9895DA69D8C723F286F /* LayoutTemplate.swift */,
+				28FB43D18B837B9BAB1BF9AE /* LayoutPickerView.swift */,
+				CB95293FE9A2E3C2C7DE4290 /* TerminalTitleBar.swift */,
+				78D4CA9A6966D66487B05139 /* MinimizedBar.swift */,
+				C14E902DB322536CFE759ADF /* WindowState.swift */,
+			);
+			path = AtelioPreview;
+			sourceTree = "<group>";
+		};
 		42A0EC1A2F8ADD1B004D2C0C = {
 			isa = PBXGroup;
 			children = (
@@ -127,6 +201,8 @@
 				42A0EC422F8ADDA9004D2C0C /* AtelioShared */,
 				42A0EC4F2F8ADF30004D2C0C /* Frameworks */,
 				42A0EC242F8ADD1B004D2C0C /* Products */,
+				CB10D27E1294611F5C2855F1 /* AtelioTests */,
+				005CAF0E9D38764C368683F9 /* AtelioPreview */,
 			);
 			sourceTree = "<group>";
 		};
@@ -136,6 +212,8 @@
 				42A0EC232F8ADD1B004D2C0C /* Atelio.app */,
 				42A0EC352F8ADD7C004D2C0C /* AtelioCLI */,
 				42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */,
+				6548442F10E77594DC0874B0 /* AtelioTests.xctest */,
+				333AF6AB537A7D0517DCC5F7 /* AtelioPreview.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -143,8 +221,32 @@
 		42A0EC4F2F8ADF30004D2C0C /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				840990434DC9B72D032DA1D9 /* OS X */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		840990434DC9B72D032DA1D9 /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				3E1F98A78C0D4E0261CB8AC2 /* Cocoa.framework */,
+			);
+			name = "OS X";
+			sourceTree = "<group>";
+		};
+		CB10D27E1294611F5C2855F1 /* AtelioTests */ = {
+			isa = PBXGroup;
+			children = (
+				FB1461FED8B74FCBFF51767C /* SanitySnapshotTests.swift */,
+				0BBB0438069DBE282359237F /* FakeTerminalView.swift */,
+				50CAA1D950C071390240D1A3 /* LayoutPreviewView.swift */,
+				27255914750C667606CEA5AC /* LayoutSnapshotTests.swift */,
+				1F52EA62B0B839ABBFAE9D4A /* TitleBarSnapshotTests.swift */,
+				DA3A55F697EE90D81837CF22 /* MinimizedBarSnapshotTests.swift */,
+				AFCFBFCA470963698C713C6D /* WorkspacePreviewView.swift */,
+				47A6B7715830882BD2873E2D /* WorkspaceSnapshotTests.swift */,
+			);
+			path = AtelioTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -227,11 +329,47 @@
 				42A0EC422F8ADDA9004D2C0C /* AtelioShared */,
 			);
 			name = AtelioShared;
-			packageProductDependencies = (
-			);
 			productName = AtelioShared;
 			productReference = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */;
 			productType = "com.apple.product-type.framework";
+		};
+		C33183F7CF29D916C9E942E2 /* AtelioPreview */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 876D41AE7519228BA980C2FB /* Build configuration list for PBXNativeTarget "AtelioPreview" */;
+			buildPhases = (
+				A05F5730E1F6D9DAF559BD2F /* Sources */,
+				637096FD8E84824EF357790A /* Frameworks */,
+				8EE4FEFF2A685CAEC26D21D5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AtelioPreview;
+			productName = AtelioPreview;
+			productReference = 333AF6AB537A7D0517DCC5F7 /* AtelioPreview.app */;
+			productType = "com.apple.product-type.application";
+		};
+		CBCBB8C7114EBC715747F2BC /* AtelioTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5575DE7411627B8191AFCE39 /* Build configuration list for PBXNativeTarget "AtelioTests" */;
+			buildPhases = (
+				55BD3E265AE0F4595EF9F7F0 /* Sources */,
+				05B0AFB508E1DA18049952CD /* Frameworks */,
+				07C0EE365F909C4EC6BC3AF1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				781FEB956E3C8203D4E21701 /* PBXTargetDependency */,
+			);
+			name = AtelioTests;
+			packageProductDependencies = (
+				EA20090965BF6504194E6A25 /* SnapshotTesting */,
+			);
+			productName = AtelioTests;
+			productReference = 6548442F10E77594DC0874B0 /* AtelioTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -266,6 +404,7 @@
 			packageReferences = (
 				42A0EC552F8AE006004D2C0C /* XCRemoteSwiftPackageReference "SwiftTerm" */,
 				42A0EC562F8AE074004D2C0C /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
+				4EC9E934DC968E2B5163F8A8 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 42A0EC242F8ADD1B004D2C0C /* Products */;
@@ -275,11 +414,20 @@
 				42A0EC222F8ADD1B004D2C0C /* Atelio */,
 				42A0EC342F8ADD7C004D2C0C /* AtelioCLI */,
 				42A0EC402F8ADDA9004D2C0C /* AtelioShared */,
+				CBCBB8C7114EBC715747F2BC /* AtelioTests */,
+				C33183F7CF29D916C9E942E2 /* AtelioPreview */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		07C0EE365F909C4EC6BC3AF1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		42A0EC212F8ADD1B004D2C0C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -288,6 +436,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		42A0EC3F2F8ADDA9004D2C0C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8EE4FEFF2A685CAEC26D21D5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -318,6 +473,35 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		55BD3E265AE0F4595EF9F7F0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CE64B2B862C47A30C4BDC178 /* SanitySnapshotTests.swift in Sources */,
+				AE790E27C1D7A3F70CBEB3A3 /* FakeTerminalView.swift in Sources */,
+				EE2FF52E2F915CC2D4F910A1 /* LayoutPreviewView.swift in Sources */,
+				3040648AAF6153F964D659D5 /* LayoutSnapshotTests.swift in Sources */,
+				2061D5CA5C0D77C3F3BB1817 /* TitleBarSnapshotTests.swift in Sources */,
+				72E92EE512B17BE855B4DAF5 /* MinimizedBarSnapshotTests.swift in Sources */,
+				2D4F1AEDD888EA082FFDD3EE /* WorkspacePreviewView.swift in Sources */,
+				C9F930C02385E1F30D43B620 /* WorkspaceSnapshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A05F5730E1F6D9DAF559BD2F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F4D008DF868E6E4E555A41E /* AtelioPreviewApp.swift in Sources */,
+				201761B72D2C04C33A824249 /* PreviewContentView.swift in Sources */,
+				B641034C908C669F6D3E87E4 /* LayoutTemplate.swift in Sources */,
+				6A6F78D9C30EFD5B04980666 /* LayoutPickerView.swift in Sources */,
+				DD6DB0AC5B65D5C000BCB284 /* TerminalTitleBar.swift in Sources */,
+				8BF61478F531FE82404ACEB4 /* MinimizedBar.swift in Sources */,
+				68B2CA1C0A46EC01153EF054 /* WindowState.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -331,9 +515,42 @@
 			target = 42A0EC402F8ADDA9004D2C0C /* AtelioShared */;
 			targetProxy = 42A0EC522F8ADF30004D2C0C /* PBXContainerItemProxy */;
 		};
+		781FEB956E3C8203D4E21701 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Atelio;
+			target = 42A0EC222F8ADD1B004D2C0C /* Atelio */;
+			targetProxy = 4810941829F98162228664B5 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		3266839C16CF340C039EEC07 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dark.AtelioPreview;
+				PRODUCT_MODULE_NAME = AtelioPreview;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
 		42A0EC2C2F8ADD1B004D2C0C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -626,6 +843,73 @@
 			};
 			name = Release;
 		};
+		BA7B4CCBAAD51ED3147DE104 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dark.AtelioTests;
+				PRODUCT_MODULE_NAME = AtelioTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Atelio.app/Contents/MacOS/Atelio";
+			};
+			name = Debug;
+		};
+		BABA8E8E3A96D67AF3276DF7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dark.AtelioTests;
+				PRODUCT_MODULE_NAME = AtelioTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Atelio.app/Contents/MacOS/Atelio";
+			};
+			name = Release;
+		};
+		D5E6BBC889838DED6A577D74 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dark.AtelioPreview;
+				PRODUCT_MODULE_NAME = AtelioPreview;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -665,6 +949,24 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		5575DE7411627B8191AFCE39 /* Build configuration list for PBXNativeTarget "AtelioTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BABA8E8E3A96D67AF3276DF7 /* Release */,
+				BA7B4CCBAAD51ED3147DE104 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		876D41AE7519228BA980C2FB /* Build configuration list for PBXNativeTarget "AtelioPreview" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D5E6BBC889838DED6A577D74 /* Release */,
+				3266839C16CF340C039EEC07 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -684,6 +986,14 @@
 				minimumVersion = 1.7.1;
 			};
 		};
+		4EC9E934DC968E2B5163F8A8 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-snapshot-testing.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.17.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -696,6 +1006,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 42A0EC562F8AE074004D2C0C /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
 			productName = ArgumentParser;
+		};
+		EA20090965BF6504194E6A25 /* SnapshotTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4EC9E934DC968E2B5163F8A8 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
+			productName = SnapshotTesting;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
