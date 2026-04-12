@@ -1,0 +1,22 @@
+# 文件
+doc/
+temp_doc/
+
+# AI 知識與設定
+.ai-knowledge/
+.ai-docs/
+.claude/
+
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/

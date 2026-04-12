@@ -1,0 +1,303 @@
+import Foundation
+import AtelioShared
+
+/// Unix domain socket server，接收 CLI 指令並路由到 TerminalManager
+class IPCServer {
+
+    static let socketPath = "/tmp/atelio.sock"
+
+    private let manager: TerminalManager
+    private var serverFd: Int32 = -1
+    private var isRunning = false
+
+    init(manager: TerminalManager) {
+        self.manager = manager
+    }
+
+    // MARK: - 啟動與停止
+
+    /// 啟動 IPC server
+    func start() throws {
+        // 清除舊的 socket 檔案
+        unlink(IPCServer.socketPath)
+
+        // 建立 socket
+        serverFd = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard serverFd >= 0 else {
+            throw IPCError.connectionFailed
+        }
+
+        // 綁定到路徑
+        var addr = sockaddr_un()
+        addr.sun_family = sa_family_t(AF_UNIX)
+
+        let pathBytes = IPCServer.socketPath.utf8CString
+        withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
+            let raw = UnsafeMutableRawPointer(ptr)
+            pathBytes.withUnsafeBufferPointer { buf in
+                raw.copyMemory(from: buf.baseAddress!, byteCount: min(buf.count, 104))
+            }
+        }
+
+        let bindResult = withUnsafePointer(to: &addr) { ptr in
+            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockPtr in
+                bind(serverFd, sockPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
+            }
+        }
+        guard bindResult == 0 else {
+            Darwin.close(serverFd)
+            throw IPCError.connectionFailed
+        }
+
+        // 開始監聽
+        guard listen(serverFd, 5) == 0 else {
+            Darwin.close(serverFd)
+            throw IPCError.connectionFailed
+        }
+
+        isRunning = true
+
+        // 在背景執行緒接受連線
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            self?.acceptLoop()
+        }
+    }
+
+    /// 停止 IPC server
+    func stop() {
+        isRunning = false
+        if serverFd >= 0 {
+            Darwin.close(serverFd)
+            serverFd = -1
+        }
+        unlink(IPCServer.socketPath)
+    }
+
+    // MARK: - 連線處理
+
+    private func acceptLoop() {
+        while isRunning {
+            let clientFd = accept(serverFd, nil, nil)
+            guard clientFd >= 0 else { continue }
+
+            // 每個連線在獨立執行緒處理
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                self?.handleClient(fd: clientFd)
+                Darwin.close(clientFd)
+            }
+        }
+    }
+
+    private func handleClient(fd: Int32) {
+        do {
+            // 讀取請求
+            let requestData = try IPCFraming.readMessage(from: fd)
+            let request = try JSONDecoder().decode(IPCRequest.self, from: requestData)
+
+            // 處理請求
+            let response = handleRequest(request)
+
+            // 送出回應
+            let responseData = try IPCFraming.encode(response)
+            try IPCFraming.writeMessage(responseData, to: fd)
+        } catch {
+            // 嘗試送出錯誤回應
+            let errorResponse = IPCResponse(success: false, message: error.localizedDescription)
+            if let data = try? IPCFraming.encode(errorResponse) {
+                try? IPCFraming.writeMessage(data, to: fd)
+            }
+        }
+    }
+
+    // MARK: - 請求路由
+
+    private func handleRequest(_ request: IPCRequest) -> IPCResponse {
+        switch request.command {
+        case .open:
+            return handleOpen(request)
+        case .dispatch:
+            return handleDispatch(request)
+        case .status:
+            return handleStatus(request)
+        case .close:
+            return handleClose(request)
+        case .screen:
+            return handleScreen(request)
+        case .wait:
+            return handleWait(request)
+        }
+    }
+
+    private func handleOpen(_ request: IPCRequest) -> IPCResponse {
+        let dir = request.dir ?? "/tmp"
+        let cmd = request.cmd ?? "/bin/zsh"
+        let semaphore = DispatchSemaphore(value: 0)
+        var response = IPCResponse(success: false, message: "未知錯誤")
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                response = IPCResponse(success: false, message: "Server 已關閉")
+                semaphore.signal()
+                return
+            }
+            do {
+                let session = try self.manager.open(name: request.name, directory: dir, command: cmd)
+                // 等待 shell 初始 prompt 出現才回傳（確保 session 就緒）
+                session.waitForReady(timeout: 5) { [weak self] ready in
+                    if ready {
+                        response = IPCResponse(success: true, message: "已開啟 session '\(session.name)'")
+                    } else if session.isRunning {
+                        // process 還活著但就緒超時（可能是 TUI 初始化慢）
+                        response = IPCResponse(success: true, message: "已開啟 session '\(session.name)'（就緒超時）")
+                    } else {
+                        // process 已死亡（cd 失敗、exec 失敗等）→ 移除並回報失敗
+                        self?.manager.sessions.removeValue(forKey: request.name)
+                        response = IPCResponse(success: false, message: "session '\(request.name)' 啟動失敗（process 已結束）")
+                    }
+                    semaphore.signal()
+                }
+                return
+            } catch {
+                response = IPCResponse(success: false, message: error.localizedDescription)
+            }
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+        return response
+    }
+
+    private func handleDispatch(_ request: IPCRequest) -> IPCResponse {
+        guard let text = request.text else {
+            return IPCResponse(success: false, message: "缺少 text 參數")
+        }
+        let timeout = request.timeout ?? 60
+        let semaphore = DispatchSemaphore(value: 0)
+        var response = IPCResponse(success: false, message: "未知錯誤")
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                response = IPCResponse(success: false, message: "Server 已關閉")
+                semaphore.signal()
+                return
+            }
+            do {
+                try self.manager.dispatch(name: request.name, text: text, timeout: timeout) { output, completed in
+                    response = IPCResponse(success: true, output: output, completed: completed)
+                    semaphore.signal()
+                }
+            } catch {
+                response = IPCResponse(success: false, message: error.localizedDescription)
+                semaphore.signal()
+            }
+        }
+
+        // 等待完成偵測（加安全邊際）
+        let waitResult = semaphore.wait(timeout: .now() + .seconds(timeout + 10))
+        if waitResult == .timedOut {
+            response = IPCResponse(success: false, message: "IPC 超時")
+        }
+        return response
+    }
+
+    private func handleStatus(_ request: IPCRequest) -> IPCResponse {
+        let semaphore = DispatchSemaphore(value: 0)
+        var response = IPCResponse(success: false, message: "未知錯誤")
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                response = IPCResponse(success: false, message: "Server 已關閉")
+                semaphore.signal()
+                return
+            }
+            do {
+                let info = try self.manager.status(name: request.name)
+                let json = try JSONEncoder().encode(info)
+                let infoStr = String(data: json, encoding: .utf8) ?? "{}"
+                response = IPCResponse(success: true, message: infoStr)
+            } catch {
+                response = IPCResponse(success: false, message: error.localizedDescription)
+            }
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+        return response
+    }
+
+    private func handleClose(_ request: IPCRequest) -> IPCResponse {
+        let semaphore = DispatchSemaphore(value: 0)
+        var response = IPCResponse(success: false, message: "未知錯誤")
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                response = IPCResponse(success: false, message: "Server 已關閉")
+                semaphore.signal()
+                return
+            }
+            self.manager.close(name: request.name, confirmKey: request.confirmKey) { result in
+                response = result
+                semaphore.signal()
+            }
+        }
+
+        // close 的 busy 檢查需要 2 秒，加安全邊際
+        let waitResult = semaphore.wait(timeout: .now() + .seconds(10))
+        if waitResult == .timedOut {
+            response = IPCResponse(success: false, message: "close 操作超時")
+        }
+        return response
+    }
+
+    private func handleScreen(_ request: IPCRequest) -> IPCResponse {
+        let semaphore = DispatchSemaphore(value: 0)
+        var response = IPCResponse(success: false, message: "未知錯誤")
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                response = IPCResponse(success: false, message: "Server 已關閉")
+                semaphore.signal()
+                return
+            }
+            do {
+                let content = try self.manager.screen(name: request.name)
+                response = IPCResponse(success: true, output: content)
+            } catch {
+                response = IPCResponse(success: false, message: error.localizedDescription)
+            }
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+        return response
+    }
+
+    private func handleWait(_ request: IPCRequest) -> IPCResponse {
+        let timeout = request.timeout ?? 60
+        let semaphore = DispatchSemaphore(value: 0)
+        var response = IPCResponse(success: false, message: "未知錯誤")
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                response = IPCResponse(success: false, message: "Server 已關閉")
+                semaphore.signal()
+                return
+            }
+            do {
+                try self.manager.wait(name: request.name, timeout: timeout) { output, completed in
+                    response = IPCResponse(success: true, output: output, completed: completed)
+                    semaphore.signal()
+                }
+            } catch {
+                response = IPCResponse(success: false, message: error.localizedDescription)
+                semaphore.signal()
+            }
+        }
+
+        let waitResult = semaphore.wait(timeout: .now() + .seconds(timeout + 10))
+        if waitResult == .timedOut {
+            response = IPCResponse(success: false, message: "IPC 超時")
+        }
+        return response
+    }
+}

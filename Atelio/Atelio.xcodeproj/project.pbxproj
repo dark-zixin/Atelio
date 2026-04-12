@@ -1,0 +1,703 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		42A0EC492F8ADDA9004D2C0C /* AtelioShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; };
+		42A0EC4A2F8ADDA9004D2C0C /* AtelioShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		42A0EC502F8ADF30004D2C0C /* AtelioShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; };
+		42A0EC512F8ADF30004D2C0C /* AtelioShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		42A0EC582F8AE0A4004D2C0C /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 42A0EC572F8AE0A4004D2C0C /* SwiftTerm */; };
+		42A0EC5A2F8AE0B1004D2C0C /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = 42A0EC592F8AE0B1004D2C0C /* ArgumentParser */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		42A0EC472F8ADDA9004D2C0C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 42A0EC1B2F8ADD1B004D2C0C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 42A0EC402F8ADDA9004D2C0C;
+			remoteInfo = AtelioShared;
+		};
+		42A0EC522F8ADF30004D2C0C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 42A0EC1B2F8ADD1B004D2C0C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 42A0EC402F8ADDA9004D2C0C;
+			remoteInfo = AtelioShared;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		42A0EC332F8ADD7C004D2C0C /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		42A0EC4E2F8ADDA9004D2C0C /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				42A0EC4A2F8ADDA9004D2C0C /* AtelioShared.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42A0EC542F8ADF30004D2C0C /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				42A0EC512F8ADF30004D2C0C /* AtelioShared.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		42A0EC232F8ADD1B004D2C0C /* Atelio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Atelio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		42A0EC352F8ADD7C004D2C0C /* AtelioCLI */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = AtelioCLI; sourceTree = BUILT_PRODUCTS_DIR; };
+		42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = AtelioShared.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		42A0EC252F8ADD1B004D2C0C /* Atelio */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Atelio;
+			sourceTree = "<group>";
+		};
+		42A0EC362F8ADD7C004D2C0C /* AtelioCLI */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AtelioCLI;
+			sourceTree = "<group>";
+		};
+		42A0EC422F8ADDA9004D2C0C /* AtelioShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AtelioShared;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		42A0EC202F8ADD1B004D2C0C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				42A0EC582F8AE0A4004D2C0C /* SwiftTerm in Frameworks */,
+				42A0EC492F8ADDA9004D2C0C /* AtelioShared.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42A0EC322F8ADD7C004D2C0C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				42A0EC5A2F8AE0B1004D2C0C /* ArgumentParser in Frameworks */,
+				42A0EC502F8ADF30004D2C0C /* AtelioShared.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42A0EC3E2F8ADDA9004D2C0C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		42A0EC1A2F8ADD1B004D2C0C = {
+			isa = PBXGroup;
+			children = (
+				42A0EC252F8ADD1B004D2C0C /* Atelio */,
+				42A0EC362F8ADD7C004D2C0C /* AtelioCLI */,
+				42A0EC422F8ADDA9004D2C0C /* AtelioShared */,
+				42A0EC4F2F8ADF30004D2C0C /* Frameworks */,
+				42A0EC242F8ADD1B004D2C0C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		42A0EC242F8ADD1B004D2C0C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				42A0EC232F8ADD1B004D2C0C /* Atelio.app */,
+				42A0EC352F8ADD7C004D2C0C /* AtelioCLI */,
+				42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		42A0EC4F2F8ADF30004D2C0C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		42A0EC3C2F8ADDA9004D2C0C /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		42A0EC222F8ADD1B004D2C0C /* Atelio */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 42A0EC2E2F8ADD1B004D2C0C /* Build configuration list for PBXNativeTarget "Atelio" */;
+			buildPhases = (
+				42A0EC1F2F8ADD1B004D2C0C /* Sources */,
+				42A0EC202F8ADD1B004D2C0C /* Frameworks */,
+				42A0EC212F8ADD1B004D2C0C /* Resources */,
+				42A0EC4E2F8ADDA9004D2C0C /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				42A0EC482F8ADDA9004D2C0C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				42A0EC252F8ADD1B004D2C0C /* Atelio */,
+			);
+			name = Atelio;
+			packageProductDependencies = (
+				42A0EC572F8AE0A4004D2C0C /* SwiftTerm */,
+			);
+			productName = Atelio;
+			productReference = 42A0EC232F8ADD1B004D2C0C /* Atelio.app */;
+			productType = "com.apple.product-type.application";
+		};
+		42A0EC342F8ADD7C004D2C0C /* AtelioCLI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 42A0EC392F8ADD7C004D2C0C /* Build configuration list for PBXNativeTarget "AtelioCLI" */;
+			buildPhases = (
+				42A0EC312F8ADD7C004D2C0C /* Sources */,
+				42A0EC322F8ADD7C004D2C0C /* Frameworks */,
+				42A0EC332F8ADD7C004D2C0C /* CopyFiles */,
+				42A0EC542F8ADF30004D2C0C /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				42A0EC532F8ADF30004D2C0C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				42A0EC362F8ADD7C004D2C0C /* AtelioCLI */,
+			);
+			name = AtelioCLI;
+			packageProductDependencies = (
+				42A0EC592F8AE0B1004D2C0C /* ArgumentParser */,
+			);
+			productName = AtelioCLI;
+			productReference = 42A0EC352F8ADD7C004D2C0C /* AtelioCLI */;
+			productType = "com.apple.product-type.tool";
+		};
+		42A0EC402F8ADDA9004D2C0C /* AtelioShared */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 42A0EC4B2F8ADDA9004D2C0C /* Build configuration list for PBXNativeTarget "AtelioShared" */;
+			buildPhases = (
+				42A0EC3C2F8ADDA9004D2C0C /* Headers */,
+				42A0EC3D2F8ADDA9004D2C0C /* Sources */,
+				42A0EC3E2F8ADDA9004D2C0C /* Frameworks */,
+				42A0EC3F2F8ADDA9004D2C0C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				42A0EC422F8ADDA9004D2C0C /* AtelioShared */,
+			);
+			name = AtelioShared;
+			packageProductDependencies = (
+			);
+			productName = AtelioShared;
+			productReference = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		42A0EC1B2F8ADD1B004D2C0C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2640;
+				LastUpgradeCheck = 2640;
+				TargetAttributes = {
+					42A0EC222F8ADD1B004D2C0C = {
+						CreatedOnToolsVersion = 26.4;
+					};
+					42A0EC342F8ADD7C004D2C0C = {
+						CreatedOnToolsVersion = 26.4;
+					};
+					42A0EC402F8ADDA9004D2C0C = {
+						CreatedOnToolsVersion = 26.4;
+					};
+				};
+			};
+			buildConfigurationList = 42A0EC1E2F8ADD1B004D2C0C /* Build configuration list for PBXProject "Atelio" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 42A0EC1A2F8ADD1B004D2C0C;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				42A0EC552F8AE006004D2C0C /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+				42A0EC562F8AE074004D2C0C /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 42A0EC242F8ADD1B004D2C0C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				42A0EC222F8ADD1B004D2C0C /* Atelio */,
+				42A0EC342F8ADD7C004D2C0C /* AtelioCLI */,
+				42A0EC402F8ADDA9004D2C0C /* AtelioShared */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		42A0EC212F8ADD1B004D2C0C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42A0EC3F2F8ADDA9004D2C0C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		42A0EC1F2F8ADD1B004D2C0C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42A0EC312F8ADD7C004D2C0C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42A0EC3D2F8ADDA9004D2C0C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		42A0EC482F8ADDA9004D2C0C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 42A0EC402F8ADDA9004D2C0C /* AtelioShared */;
+			targetProxy = 42A0EC472F8ADDA9004D2C0C /* PBXContainerItemProxy */;
+		};
+		42A0EC532F8ADF30004D2C0C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 42A0EC402F8ADDA9004D2C0C /* AtelioShared */;
+			targetProxy = 42A0EC522F8ADF30004D2C0C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		42A0EC2C2F8ADD1B004D2C0C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		42A0EC2D2F8ADD1B004D2C0C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		42A0EC2F2F8ADD1B004D2C0C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dark.Atelio;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		42A0EC302F8ADD1B004D2C0C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dark.Atelio;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		42A0EC3A2F8ADD7C004D2C0C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				ENABLE_HARDENED_RUNTIME = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		42A0EC3B2F8ADD7C004D2C0C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				ENABLE_HARDENED_RUNTIME = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		42A0EC4C2F8ADDA9004D2C0C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dark.AtelioShared;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		42A0EC4D2F8ADDA9004D2C0C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 62G8F746P6;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dark.AtelioShared;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		42A0EC1E2F8ADD1B004D2C0C /* Build configuration list for PBXProject "Atelio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				42A0EC2C2F8ADD1B004D2C0C /* Debug */,
+				42A0EC2D2F8ADD1B004D2C0C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		42A0EC2E2F8ADD1B004D2C0C /* Build configuration list for PBXNativeTarget "Atelio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				42A0EC2F2F8ADD1B004D2C0C /* Debug */,
+				42A0EC302F8ADD1B004D2C0C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		42A0EC392F8ADD7C004D2C0C /* Build configuration list for PBXNativeTarget "AtelioCLI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				42A0EC3A2F8ADD7C004D2C0C /* Debug */,
+				42A0EC3B2F8ADD7C004D2C0C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		42A0EC4B2F8ADDA9004D2C0C /* Build configuration list for PBXNativeTarget "AtelioShared" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				42A0EC4C2F8ADDA9004D2C0C /* Debug */,
+				42A0EC4D2F8ADDA9004D2C0C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		42A0EC552F8AE006004D2C0C /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.0;
+			};
+		};
+		42A0EC562F8AE074004D2C0C /* XCRemoteSwiftPackageReference "swift-argument-parser" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-argument-parser.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.7.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		42A0EC572F8AE0A4004D2C0C /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 42A0EC552F8AE006004D2C0C /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+		42A0EC592F8AE0B1004D2C0C /* ArgumentParser */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 42A0EC562F8AE074004D2C0C /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
+			productName = ArgumentParser;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 42A0EC1B2F8ADD1B004D2C0C /* Project object */;
+}
