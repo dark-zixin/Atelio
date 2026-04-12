@@ -94,8 +94,8 @@ struct WorkspaceView: View {
                     // 所有終端都被最小化
                     emptyLayoutState
                 } else {
-                    ForEach(Array(zip(normalNames.indices, slots)), id: \.0) { index, slot in
-                        let name = normalNames[index]
+                    ForEach(Array(zip(normalNames, slots)), id: \.0) { name, slot in
+                        let index = normalNames.firstIndex(of: name) ?? 0
                         if let session = manager.sessions[name] {
                             let slotWidth = slot.width * geo.size.width - 2
                             let slotHeight = slot.height * geo.size.height - 2

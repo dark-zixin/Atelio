@@ -220,4 +220,13 @@ class CaptureTerminalView: LocalProcessTerminalView {
         let cleaned = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")
         return "\(cleaned.hashValue)"
     }
+
+    // MARK: - 防止 layout 過渡期的極小 resize 清空 buffer
+
+    override func setFrameSize(_ newSize: NSSize) {
+        if newSize.width < 20 || newSize.height < 20 {
+            return
+        }
+        super.setFrameSize(newSize)
+    }
 }
