@@ -6,12 +6,23 @@ import SwiftUI
 struct TerminalTitleBar: View {
     let name: String
     let purpose: String
+    let status: String
     let isFocused: Bool
     let isMaximized: Bool
     let availableModes: [LayoutMode]
 
     /// 選擇 layout 模式（此終端成為主位）
     var onSelectLayout: ((LayoutMode) -> Void)?
+    private var statusColor: Color {
+        switch status {
+        case "busy": return .orange
+        case "idle": return .gray
+        case "unowned": return .yellow
+        case "exited": return .red
+        default: return .gray
+        }
+    }
+
     var onMinimize: (() -> Void)?
     var onMaximize: (() -> Void)?
     var onClose: (() -> Void)?
@@ -34,6 +45,10 @@ struct TerminalTitleBar: View {
                         .foregroundStyle(.gray)
                         .lineLimit(1)
                 }
+
+                Text("· \(status)")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundStyle(statusColor)
             }
 
             Spacer()

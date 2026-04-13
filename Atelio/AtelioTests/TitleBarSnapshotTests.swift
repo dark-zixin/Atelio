@@ -47,6 +47,7 @@ final class TitleBarSnapshotTests: XCTestCase {
         let view = TerminalTitleBar(
             name: "Claude Code",
             purpose: "主力開發",
+            status: "busy",
             isFocused: true,
             isMaximized: false,
             availableModes: LayoutMode.allCases
@@ -64,6 +65,7 @@ final class TitleBarSnapshotTests: XCTestCase {
         let view = TerminalTitleBar(
             name: "Codex Review",
             purpose: "code review",
+            status: "idle",
             isFocused: false,
             isMaximized: false,
             availableModes: LayoutMode.allCases

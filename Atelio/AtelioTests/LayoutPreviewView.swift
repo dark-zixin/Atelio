@@ -31,6 +31,7 @@ struct LayoutPreviewView: View {
                             TerminalTitleBar(
                                 name: terminalNames[index],
                                 purpose: "用途描述",
+                                status: "idle",
                                 isFocused: index == focusedIndex,
                                 isMaximized: false,
                                 availableModes: LayoutMode.allCases

@@ -127,41 +127,18 @@ class CaptureTerminalView: LocalProcessTerminalView {
         completionHandler = nil
     }
 
-    // MARK: - PTY 資料攔截 + resize 敏感偵測
-
-    /// resize 後短時間內收到大量 PTY 輸出 → 標記為 resizeSensitive
-    private(set) var resizeSensitive = false
-
-    /// 最近一次 resize 的時間
-    private var lastResizeTime: Date?
-
-    /// resize 後累積的 PTY bytes
-    private var postResizePtyBytes = 0
-
-    /// 偵測門檻：resize 後 200ms 內收到 > 1024 bytes 判定為 heavy redraw
-    private let resizeSensitiveThreshold = 1024
-    private let resizeSensitiveWindow: TimeInterval = 0.2
+    // MARK: - PTY 資料攔截
 
     override func dataReceived(slice: ArraySlice<UInt8>) {
         let now = Date()
         let gap = now.timeIntervalSince(lastDataTime) * 1000
         lastDataTime = now
 
-        // 偵測 resize 後的大量 PTY 輸出
-        if let resizeTime = lastResizeTime, now.timeIntervalSince(resizeTime) < resizeSensitiveWindow {
-            postResizePtyBytes += slice.count
-            if postResizePtyBytes > resizeSensitiveThreshold && !resizeSensitive {
-                resizeSensitive = true
-            }
-        }
-
         super.dataReceived(slice: slice)
 
         if isCapturing {
             hasReceivedData = true
             writeLog("PTY,\(Int(gap)),\(slice.count),,,")
-        } else if gap > 2000 {
-            writeLog("PTY_IDLE,\(Int(gap)),\(slice.count),,,")
         }
     }
 
@@ -260,8 +237,6 @@ class CaptureTerminalView: LocalProcessTerminalView {
             return
         }
 
-        lastResizeTime = Date()
-        postResizePtyBytes = 0
         super.setFrameSize(newSize)
     }
 }

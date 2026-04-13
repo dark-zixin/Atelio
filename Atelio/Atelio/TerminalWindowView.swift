@@ -18,6 +18,7 @@ struct TerminalWindowView: View {
             TerminalTitleBar(
                 name: session.name,
                 purpose: session.purpose,
+                status: session.status.rawValue,
                 isFocused: isFocused,
                 isMaximized: isMaximized,
                 availableModes: availableModes,

@@ -121,6 +121,27 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         terminalView.isScreenIdle
     }
 
+    /// Session 狀態（用於 UI 顯示）
+    enum Status: String {
+        case busy       // 畫面在動
+        case idle       // 畫面靜止
+        case unowned    // 呼叫端 process 已結束
+        case exited     // 終端裡的程式結束了
+    }
+
+    /// 取得目前 session 狀態（每次查詢時即時計算，順便清理失效的 ownerPID）
+    var status: Status {
+        if !isRunning { return .exited }
+        // 檢查 ownerPID 是否還活著
+        if let owner = ownerPID {
+            if kill(owner, 0) != 0 {
+                ownerPID = nil
+                return .unowned
+            }
+        }
+        return isScreenIdle ? .idle : .busy
+    }
+
     /// 讀取目前終端完整畫面內容（含 scrollback buffer）
     func readScreen() -> String {
         return terminalView.readFullBuffer()
@@ -128,19 +149,42 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     /// 不送文字，只等待畫面穩定
     ///
-    /// 用於 dispatch 返回半完成結果後，AI 判斷需要繼續等待的情境。
+    /// 用統一 timer 維護的 isScreenIdle 判斷。
+    /// 如果已經 idle → 立刻回傳。不是 idle → 輪詢等待直到 idle 或 timeout。
     func wait(timeout: Int, completion: @escaping (String, Bool) -> Void) {
         guard isRunning else {
             completion("", false)
             return
         }
 
-        terminalView.startCapture(timeout: timeout, requireScreenChange: false) { [weak self] _, completed in
-            guard let self = self else { return }
-            let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBuffer())
-            completion(fullBuffer, completed)
+        // 已經 idle → 立刻回傳
+        if terminalView.isScreenIdle {
+            let fullBuffer = truncateIfNeeded(terminalView.readFullBuffer())
+            completion(fullBuffer, true)
+            return
         }
-        // 不送任何文字
+
+        // 等待 idle：每 200ms 檢查一次
+        let deadline = Date().addingTimeInterval(TimeInterval(timeout))
+        let checkTimer = DispatchSource.makeTimerSource(queue: .main)
+        checkTimer.schedule(deadline: .now() + .milliseconds(200), repeating: .milliseconds(200))
+        checkTimer.setEventHandler { [weak self] in
+            guard let self = self else {
+                checkTimer.cancel()
+                completion("", false)
+                return
+            }
+            if self.terminalView.isScreenIdle {
+                checkTimer.cancel()
+                let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBuffer())
+                completion(fullBuffer, true)
+            } else if Date() >= deadline {
+                checkTimer.cancel()
+                let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBuffer())
+                completion(fullBuffer, false)
+            }
+        }
+        checkTimer.resume()
     }
 
     /// 取得 session 狀態資訊
@@ -156,15 +200,9 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         )
     }
 
-    /// 檢查 session 是否忙碌（畫面正在變化）
+    /// 檢查 session 是否忙碌（直接用統一 timer 維護的 idle 狀態）
     func checkBusy(completion: @escaping (Bool) -> Void) {
-        let snapshot = terminalView.readTerminalBuffer()
-        // 2 秒後再讀一次，比較畫面是否有變化
-        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) { [weak self] in
-            guard let self = self else { completion(false); return }
-            let current = self.terminalView.readTerminalBuffer()
-            completion(current != snapshot)
-        }
+        completion(!terminalView.isScreenIdle)
     }
 
     /// 關閉 session（直接關閉，不檢查狀態）

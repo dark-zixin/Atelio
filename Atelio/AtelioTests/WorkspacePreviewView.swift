@@ -24,6 +24,7 @@ struct WorkspacePreviewView: View {
                     TerminalTitleBar(
                         name: terminal.name,
                         purpose: terminal.purpose,
+                        status: "idle",
                         isFocused: true,
                         isMaximized: true,
                         availableModes: LayoutMode.allCases,
@@ -77,6 +78,7 @@ struct WorkspacePreviewView: View {
                         TerminalTitleBar(
                             name: name,
                             purpose: terminal.purpose,
+                            status: "idle",
                             isFocused: workspace.focusedTerminalName == name,
                             isMaximized: false,
                             availableModes: LayoutMode.allCases,

@@ -35,6 +35,16 @@ private struct MinimizedTerminalChip: View {
     let status: String
     let onTap: () -> Void
 
+    private var statusColor: Color {
+        switch status {
+        case "busy": return .orange
+        case "idle": return .gray
+        case "unowned": return .yellow
+        case "exited": return .red
+        default: return .gray
+        }
+    }
+
     @State private var isHovered = false
 
     var body: some View {
@@ -50,7 +60,7 @@ private struct MinimizedTerminalChip: View {
 
                 Text("(\(status))")
                     .font(.system(size: 9))
-                    .foregroundStyle(status == "busy" ? .orange : status == "exited" ? .red : .gray)
+                    .foregroundStyle(statusColor)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)

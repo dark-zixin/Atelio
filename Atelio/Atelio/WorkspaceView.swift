@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// 主工作區 View，取代 TabView
 ///
@@ -7,6 +8,8 @@ import SwiftUI
 struct WorkspaceView: View {
     @Bindable var manager: TerminalManager
     @State private var workspace = WorkspaceState()
+    /// 定期刷新標題列狀態（每 2 秒 +1，觸發 body 重新計算）
+    @State private var statusTick = 0
 
     /// 所有 session 按建立時間排序
     private var sortedSessions: [TerminalSession] {
@@ -51,17 +54,9 @@ struct WorkspaceView: View {
                 MinimizedBar(
                     terminals: minimized.compactMap { name in
                         guard let session = manager.sessions[name] else { return nil }
-                        let status: String
-                        if !session.isRunning {
-                            status = "exited"
-                        } else if session.isScreenIdle {
-                            status = "idle"
-                        } else {
-                            status = "busy"
-                        }
                         return MinimizedTerminalInfo(
                             name: name,
-                            status: status
+                            status: session.status.rawValue
                         )
                     },
                     onRestore: { name in
@@ -78,6 +73,11 @@ struct WorkspaceView: View {
         .onAppear {
             syncWorkspaceState()
         }
+        .onReceive(Timer.publish(every: 2, on: .main, in: .common).autoconnect()) { _ in
+            statusTick &+= 1
+        }
+        // 讓 SwiftUI 感知 statusTick 變化，觸發 body 重新計算
+        .overlay { let _ = statusTick }
     }
 
     // MARK: - Layout 內容

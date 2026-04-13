@@ -130,6 +130,22 @@ class IPCServer {
         }
     }
 
+    /// 驗證 callerPID 是否有權操作 session（dispatch/close/wait 共用）
+    /// 回傳 nil 表示通過，否則回傳錯誤訊息
+    private func verifyOwner(session: TerminalSession, callerPID: Int32?, command: String) -> String? {
+        guard let callerPID = callerPID else { return nil }
+        if let owner = session.ownerPID {
+            // 檢查 owner process 是否還活著
+            if kill(owner, 0) != 0 {
+                // owner 已死，清除並允許新 caller 接管
+                session.ownerPID = nil
+            } else if owner != callerPID {
+                return "此 session 由其他程序擁有（owner=\(owner)），無權 \(command)"
+            }
+        }
+        return nil
+    }
+
     private func handleOpen(_ request: IPCRequest) -> IPCResponse {
         let dir = request.dir ?? "/tmp"
         let cmd = request.cmd ?? "/bin/zsh"
@@ -186,16 +202,15 @@ class IPCServer {
             }
             do {
                 // PPID owner 驗證
-                if let callerPID = request.callerPID {
-                    let session = self.manager.sessions[request.name]
-                    if let owner = session?.ownerPID, owner != callerPID {
-                        response = IPCResponse(success: false, message: "此 session 由其他程序擁有（owner=\(owner)），無權 dispatch")
+                if let session = self.manager.sessions[request.name] {
+                    if let error = self.verifyOwner(session: session, callerPID: request.callerPID, command: "dispatch") {
+                        response = IPCResponse(success: false, message: error)
                         semaphore.signal()
                         return
                     }
                     // 第一次 dispatch 時記錄 ownerPID
-                    if session?.ownerPID == nil {
-                        session?.ownerPID = callerPID
+                    if session.ownerPID == nil, let callerPID = request.callerPID {
+                        session.ownerPID = callerPID
                     }
                 }
 
@@ -253,10 +268,9 @@ class IPCServer {
                 return
             }
             // PPID owner 驗證
-            if let callerPID = request.callerPID,
-               let session = self.manager.sessions[request.name],
-               let owner = session.ownerPID, owner != callerPID {
-                response = IPCResponse(success: false, message: "此 session 由其他程序擁有（owner=\(owner)），無權 close")
+            if let session = self.manager.sessions[request.name],
+               let error = self.verifyOwner(session: session, callerPID: request.callerPID, command: "close") {
+                response = IPCResponse(success: false, message: error)
                 semaphore.signal()
                 return
             }
@@ -309,6 +323,14 @@ class IPCServer {
                 return
             }
             do {
+                // PPID owner 驗證
+                if let session = self.manager.sessions[request.name],
+                   let error = self.verifyOwner(session: session, callerPID: request.callerPID, command: "wait") {
+                    response = IPCResponse(success: false, message: error)
+                    semaphore.signal()
+                    return
+                }
+
                 try self.manager.wait(name: request.name, timeout: timeout) { output, completed in
                     response = IPCResponse(success: true, output: output, timeout: !completed)
                     semaphore.signal()
