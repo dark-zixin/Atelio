@@ -47,16 +47,22 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         // 統一用 zsh -c 解析 command（支援帶參數、管線、複合指令）
         // directory 用單引號 escape（路徑可能有空格）
         // 不加 exec（會破壞複合指令語義）
+        // 環境變數：加 CLAUDE_CODE_NO_FLICKER=1 讓 Claude Code 使用 alt screen buffer
+        var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
+        env.append("CLAUDE_CODE_NO_FLICKER=1")
+
         if !directory.isEmpty {
             let escapedDir = directory.replacingOccurrences(of: "'", with: "'\\''")
             terminalView.startProcess(
                 executable: "/bin/zsh",
-                args: ["-c", "cd '\(escapedDir)' && \(command)"]
+                args: ["-c", "cd '\(escapedDir)' && \(command)"],
+                environment: env
             )
         } else {
             terminalView.startProcess(
                 executable: "/bin/zsh",
-                args: ["-c", command]
+                args: ["-c", command],
+                environment: env
             )
         }
         isRunning = true

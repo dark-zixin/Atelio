@@ -106,12 +106,33 @@ class CaptureTerminalView: LocalProcessTerminalView {
         completionHandler = nil
     }
 
-    // MARK: - PTY 資料攔截（只記錄，不讀畫面）
+    // MARK: - PTY 資料攔截 + resize 敏感偵測
+
+    /// resize 後短時間內收到大量 PTY 輸出 → 標記為 resizeSensitive
+    private(set) var resizeSensitive = false
+
+    /// 最近一次 resize 的時間
+    private var lastResizeTime: Date?
+
+    /// resize 後累積的 PTY bytes
+    private var postResizePtyBytes = 0
+
+    /// 偵測門檻：resize 後 200ms 內收到 > 1024 bytes 判定為 heavy redraw
+    private let resizeSensitiveThreshold = 1024
+    private let resizeSensitiveWindow: TimeInterval = 0.2
 
     override func dataReceived(slice: ArraySlice<UInt8>) {
         let now = Date()
         let gap = now.timeIntervalSince(lastDataTime) * 1000
         lastDataTime = now
+
+        // 偵測 resize 後的大量 PTY 輸出
+        if let resizeTime = lastResizeTime, now.timeIntervalSince(resizeTime) < resizeSensitiveWindow {
+            postResizePtyBytes += slice.count
+            if postResizePtyBytes > resizeSensitiveThreshold && !resizeSensitive {
+                resizeSensitive = true
+            }
+        }
 
         super.dataReceived(slice: slice)
 
@@ -119,7 +140,6 @@ class CaptureTerminalView: LocalProcessTerminalView {
             hasReceivedData = true
             writeLog("PTY,\(Int(gap)),\(slice.count),,,")
         } else if gap > 2000 {
-            // 非 capture 期間只記錄大 gap（idle 基線）
             writeLog("PTY_IDLE,\(Int(gap)),\(slice.count),,,")
         }
     }
@@ -221,12 +241,16 @@ class CaptureTerminalView: LocalProcessTerminalView {
         return "\(cleaned.hashValue)"
     }
 
-    // MARK: - 防止 layout 過渡期的極小 resize 清空 buffer
+    // MARK: - Resize 控制
 
     override func setFrameSize(_ newSize: NSSize) {
+        // 攔截極小中間尺寸（SwiftUI layout 過渡期會產生極小 frame）
         if newSize.width < 20 || newSize.height < 20 {
             return
         }
+
+        lastResizeTime = Date()
+        postResizePtyBytes = 0
         super.setFrameSize(newSize)
     }
 }
