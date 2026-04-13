@@ -27,7 +27,7 @@ struct DispatchCommand: ParsableCommand {
                 print(output)
             }
             // 如果超時，以非零 exit code 結束
-            if response.completed == false {
+            if response.timeout == true {
                 fputs("（超時）\n", stderr)
                 throw ExitCode(1)
             }

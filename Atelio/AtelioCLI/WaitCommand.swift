@@ -22,7 +22,7 @@ struct WaitCommand: ParsableCommand {
             if let output = response.output {
                 print(output)
             }
-            if response.completed == false {
+            if response.timeout == true {
                 fputs("（超時）\n", stderr)
                 throw ExitCode(1)
             }

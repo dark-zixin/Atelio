@@ -50,7 +50,7 @@ private struct MinimizedTerminalChip: View {
 
                 Text("(\(status))")
                     .font(.system(size: 9))
-                    .foregroundStyle(status == "busy" ? .orange : .gray)
+                    .foregroundStyle(status == "busy" ? .orange : status == "exited" ? .red : .gray)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)

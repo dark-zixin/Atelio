@@ -51,9 +51,17 @@ struct WorkspaceView: View {
                 MinimizedBar(
                     terminals: minimized.compactMap { name in
                         guard let session = manager.sessions[name] else { return nil }
+                        let status: String
+                        if !session.isRunning {
+                            status = "exited"
+                        } else if session.isScreenIdle {
+                            status = "idle"
+                        } else {
+                            status = "busy"
+                        }
                         return MinimizedTerminalInfo(
                             name: name,
-                            status: session.isRunning ? "busy" : "idle"
+                            status: status
                         )
                     },
                     onRestore: { name in

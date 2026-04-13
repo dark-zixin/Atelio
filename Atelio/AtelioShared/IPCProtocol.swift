@@ -15,8 +15,9 @@ public struct IPCRequest: Codable {
     public var timeout: Int?
     public var confirmKey: String?
     public var purpose: String?
+    public var callerPID: Int32?
 
-    public init(command: Command, name: String, dir: String? = nil, cmd: String? = nil, text: String? = nil, timeout: Int? = nil, confirmKey: String? = nil, purpose: String? = nil) {
+    public init(command: Command, name: String, dir: String? = nil, cmd: String? = nil, text: String? = nil, timeout: Int? = nil, confirmKey: String? = nil, purpose: String? = nil, callerPID: Int32? = nil) {
         self.command = command
         self.name = name
         self.dir = dir
@@ -25,6 +26,7 @@ public struct IPCRequest: Codable {
         self.timeout = timeout
         self.confirmKey = confirmKey
         self.purpose = purpose
+        self.callerPID = callerPID
     }
 }
 
@@ -34,13 +36,13 @@ public struct IPCResponse: Codable {
     public let success: Bool
     public var message: String?
     public var output: String?
-    public var completed: Bool?
+    public var timeout: Bool?
 
-    public init(success: Bool, message: String? = nil, output: String? = nil, completed: Bool? = nil) {
+    public init(success: Bool, message: String? = nil, output: String? = nil, timeout: Bool? = nil) {
         self.success = success
         self.message = message
         self.output = output
-        self.completed = completed
+        self.timeout = timeout
     }
 }
 

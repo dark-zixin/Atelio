@@ -185,8 +185,22 @@ class IPCServer {
                 return
             }
             do {
+                // PPID owner 驗證
+                if let callerPID = request.callerPID {
+                    let session = self.manager.sessions[request.name]
+                    if let owner = session?.ownerPID, owner != callerPID {
+                        response = IPCResponse(success: false, message: "此 session 由其他程序擁有（owner=\(owner)），無權 dispatch")
+                        semaphore.signal()
+                        return
+                    }
+                    // 第一次 dispatch 時記錄 ownerPID
+                    if session?.ownerPID == nil {
+                        session?.ownerPID = callerPID
+                    }
+                }
+
                 try self.manager.dispatch(name: request.name, text: text, timeout: timeout) { output, completed in
-                    response = IPCResponse(success: true, output: output, completed: completed)
+                    response = IPCResponse(success: true, output: output, timeout: !completed)
                     semaphore.signal()
                 }
             } catch {
@@ -235,6 +249,14 @@ class IPCServer {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else {
                 response = IPCResponse(success: false, message: "Server 已關閉")
+                semaphore.signal()
+                return
+            }
+            // PPID owner 驗證
+            if let callerPID = request.callerPID,
+               let session = self.manager.sessions[request.name],
+               let owner = session.ownerPID, owner != callerPID {
+                response = IPCResponse(success: false, message: "此 session 由其他程序擁有（owner=\(owner)），無權 close")
                 semaphore.signal()
                 return
             }
@@ -288,7 +310,7 @@ class IPCServer {
             }
             do {
                 try self.manager.wait(name: request.name, timeout: timeout) { output, completed in
-                    response = IPCResponse(success: true, output: output, completed: completed)
+                    response = IPCResponse(success: true, output: output, timeout: !completed)
                     semaphore.signal()
                 }
             } catch {

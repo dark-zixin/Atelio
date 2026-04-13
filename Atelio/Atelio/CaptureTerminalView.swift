@@ -4,15 +4,18 @@ import AppKit
 
 /// 繼承 LocalProcessTerminalView，攔截 PTY 輸出資料
 ///
-/// 完成偵測：畫面內容 hash 穩定 3 秒即判定完成。
-/// dataReceived 只作為「有新資料」的觸發信號，每 200ms 才讀一次畫面做 hash 比對。
+/// 完成偵測：畫面內容 hash 穩定 5 秒即判定完成。
+/// 統一 timer 在 session 存活期間持續運行，同時負責 idle 狀態監控和 capture 完成偵測。
 class CaptureTerminalView: LocalProcessTerminalView {
 
     /// 是否正在擷取
     private(set) var isCapturing = false
 
+    /// 畫面是否處於靜止狀態（穩定超過 stabilityThreshold 秒）
+    private(set) var isScreenIdle = true
+
     /// 畫面穩定門檻（秒）
-    var stabilityThreshold: TimeInterval = 2.0
+    var stabilityThreshold: TimeInterval = 5.0
 
     /// 完成回調
     private var completionHandler: ((String, Bool) -> Void)?
@@ -29,9 +32,9 @@ class CaptureTerminalView: LocalProcessTerminalView {
     /// 是否要求畫面必須變化才觸發完成（dispatch=true, wait=false）
     private var requireScreenChange = true
 
-    // MARK: - 畫面 hash 偵測
+    // MARK: - 畫面 hash 偵測（統一 timer）
 
-    /// 畫面 hash 檢查 timer（每 200ms）
+    /// 畫面 hash 檢查 timer（每 200ms，session 存活期間持續運行）
     private var screenCheckTimer: DispatchSourceTimer?
 
     /// 上次畫面 hash
@@ -69,6 +72,26 @@ class CaptureTerminalView: LocalProcessTerminalView {
 
     // MARK: - 擷取控制
 
+    /// 啟動統一 timer（session 建立後呼叫一次）
+    func startIdleMonitor() {
+        guard screenCheckTimer == nil else { return }
+        lastScreenHash = stableHash(readTerminalBuffer())
+        stableStartTime = Date()
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + .milliseconds(200), repeating: .milliseconds(200))
+        timer.setEventHandler { [weak self] in
+            self?.checkScreenHash()
+        }
+        timer.resume()
+        screenCheckTimer = timer
+    }
+
+    /// 停止統一 timer（session 關閉時呼叫）
+    func stopIdleMonitor() {
+        screenCheckTimer?.cancel()
+        screenCheckTimer = nil
+    }
+
     func startCapture(timeout: Int, requireScreenChange: Bool = true, completion: @escaping (String, Bool) -> Void) {
         isCapturing = true
         hasReceivedData = false
@@ -85,8 +108,7 @@ class CaptureTerminalView: LocalProcessTerminalView {
 
         writeLog("START,0,0,false,0,timeout=\(timeout) requireChange=\(requireScreenChange)")
 
-        // 啟動畫面 hash 檢查 timer（每 200ms）
-        startScreenCheckTimer()
+        // 統一 timer 已在持續運行，不需要額外啟動
 
         // 設定超時
         let timeoutWork = DispatchWorkItem { [weak self] in
@@ -100,7 +122,6 @@ class CaptureTerminalView: LocalProcessTerminalView {
 
     func stopCapture() {
         isCapturing = false
-        stopScreenCheckTimer()
         timeoutTimer?.cancel()
         timeoutTimer = nil
         completionHandler = nil
@@ -144,50 +165,41 @@ class CaptureTerminalView: LocalProcessTerminalView {
         }
     }
 
-    // MARK: - 畫面 hash 定期檢查
-
-    private func startScreenCheckTimer() {
-        stopScreenCheckTimer()
-        let timer = DispatchSource.makeTimerSource(queue: .main)
-        timer.schedule(deadline: .now() + .milliseconds(200), repeating: .milliseconds(200))
-        timer.setEventHandler { [weak self] in
-            self?.checkScreenHash()
-        }
-        timer.resume()
-        screenCheckTimer = timer
-    }
-
-    private func stopScreenCheckTimer() {
-        screenCheckTimer?.cancel()
-        screenCheckTimer = nil
-    }
+    // MARK: - 畫面 hash 定期檢查（統一 timer）
 
     private func checkScreenHash() {
-        guard isCapturing else { return }
-        guard hasReceivedData || !requireScreenChange else { return }
-
         let screen = readTerminalBuffer()
         let hash = stableHash(screen)
         let changed = hash != lastScreenHash
 
         if changed {
-            // 畫面有變化 → 重置穩定計時
+            // 畫面有變化 → 重置穩定計時，標記為非 idle
             lastScreenHash = hash
             stableStartTime = Date()
-            // 記錄最後一行非空內容（幫助判斷狀態）
-            let lastLine = screen.split(separator: "\n").last(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty })
-            let summary = String((lastLine ?? "").prefix(60)).replacingOccurrences(of: ",", with: ";")
-            writeLog("SCREEN,0,0,true,0,\(summary)")
+            isScreenIdle = false
+
+            if isCapturing {
+                let lastLine = screen.split(separator: "\n").last(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty })
+                let summary = String((lastLine ?? "").prefix(60)).replacingOccurrences(of: ",", with: ";")
+                writeLog("SCREEN,0,0,true,0,\(summary)")
+            }
         } else if let stableStart = stableStartTime {
             // 畫面沒變 → 計算穩定時間
             let stableMs = Date().timeIntervalSince(stableStart) * 1000
 
-            // 確認畫面跟 dispatch 前不同（避免指令未送達就觸發）
-            let differentFromPre = hash != stableHash(preDispatchSnapshot)
+            // 更新 idle 狀態
+            if stableMs >= stabilityThreshold * 1000 {
+                isScreenIdle = true
+            }
 
-            if stableMs >= stabilityThreshold * 1000 && differentFromPre {
-                writeLog("COMPLETE,0,0,false,\(Int(stableMs)),畫面穩定\(String(format: "%.1f", stableMs/1000))秒")
-                finishCapture(completed: true)
+            // capture 完成偵測
+            if isCapturing {
+                guard hasReceivedData || !requireScreenChange else { return }
+                let differentFromPre = hash != stableHash(preDispatchSnapshot)
+                if stableMs >= stabilityThreshold * 1000 && differentFromPre {
+                    writeLog("COMPLETE,0,0,false,\(Int(stableMs)),畫面穩定\(String(format: "%.1f", stableMs/1000))秒")
+                    finishCapture(completed: true)
+                }
             }
         } else {
             // 首次檢查，還沒有 stableStartTime
@@ -205,13 +217,12 @@ class CaptureTerminalView: LocalProcessTerminalView {
     private func finishCapture(completed: Bool) {
         guard isCapturing else { return }
         isCapturing = false
-        stopScreenCheckTimer()
         timeoutTimer?.cancel()
         timeoutTimer = nil
 
         writeLog("FINISH,0,0,false,0,completed=\(completed)")
 
-        let currentScreen = readTerminalBuffer()
+        let currentScreen = readFullBuffer()
         let handler = completionHandler
         completionHandler = nil
         handler?(currentScreen, completed)

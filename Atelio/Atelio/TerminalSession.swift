@@ -23,6 +23,9 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     /// close 確認 key（busy 時產生，用於二次確認）
     private(set) var pendingCloseKey: String?
 
+    /// 擁有者的 PPID（第一次 dispatch 時記錄，用於防止不同 AI 操作同一 session）
+    var ownerPID: Int32?
+
     // MARK: - 初始化
 
     private static let dateFormatter: DateFormatter = {
@@ -66,6 +69,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
             )
         }
         isRunning = true
+        terminalView.startIdleMonitor()
     }
 
     // MARK: - 就緒等待
@@ -112,9 +116,14 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         }
     }
 
-    /// 讀取目前終端可見畫面內容
+    /// 畫面是否處於靜止狀態
+    var isScreenIdle: Bool {
+        terminalView.isScreenIdle
+    }
+
+    /// 讀取目前終端完整畫面內容（含 scrollback buffer）
     func readScreen() -> String {
-        return terminalView.readTerminalBuffer()
+        return terminalView.readFullBuffer()
     }
 
     /// 不送文字，只等待畫面穩定
@@ -161,6 +170,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     /// 關閉 session（直接關閉，不檢查狀態）
     func forceClose() {
         terminalView.stopCapture()
+        terminalView.stopIdleMonitor()
         terminalView.process?.terminate()
         isRunning = false
         pendingCloseKey = nil

@@ -100,6 +100,8 @@ class WorkspaceState {
                 displayStates[autoName] = .normal
             }
             autoMinimizedNames.removeAll()
+            // 被點擊的終端也要設回 normal（可能是手動 minimized 的）
+            displayStates[name] = .normal
             // 焦點給被恢復的終端
             focusedTerminalName = name
         } else {
