@@ -135,10 +135,9 @@ class IPCServer {
     private func verifyOwner(session: TerminalSession, callerPID: Int32?, command: String) -> String? {
         guard let callerPID = callerPID else { return nil }
         if let owner = session.ownerPID {
-            // 檢查 owner process 是否還活著
             if kill(owner, 0) != 0 {
-                // owner 已死，清除並允許新 caller 接管
-                session.ownerPID = nil
+                // owner 已死 → session 鎖定，只有 screen 可用
+                return "此 session 的擁有者已斷開（owner=\(owner)），無法 \(command)（請從 UI 關閉或用 screen 查看）"
             } else if owner != callerPID {
                 return "此 session 由其他程序擁有（owner=\(owner)），無權 \(command)"
             }
@@ -161,6 +160,8 @@ class IPCServer {
             do {
                 let purpose = request.purpose ?? ""
                 let session = try self.manager.open(name: request.name, purpose: purpose, directory: dir, command: cmd)
+                // open 時就記錄 ownerPID，session 從建立那刻起就有 owner
+                session.ownerPID = request.callerPID
                 // 等待 shell 初始 prompt 出現才回傳（確保 session 就緒）
                 session.waitForReady(timeout: 5) { [weak self] ready in
                     if ready {
@@ -202,16 +203,11 @@ class IPCServer {
             }
             do {
                 // PPID owner 驗證
-                if let session = self.manager.sessions[request.name] {
-                    if let error = self.verifyOwner(session: session, callerPID: request.callerPID, command: "dispatch") {
-                        response = IPCResponse(success: false, message: error)
-                        semaphore.signal()
-                        return
-                    }
-                    // 第一次 dispatch 時記錄 ownerPID
-                    if session.ownerPID == nil, let callerPID = request.callerPID {
-                        session.ownerPID = callerPID
-                    }
+                if let session = self.manager.sessions[request.name],
+                   let error = self.verifyOwner(session: session, callerPID: request.callerPID, command: "dispatch") {
+                    response = IPCResponse(success: false, message: error)
+                    semaphore.signal()
+                    return
                 }
 
                 try self.manager.dispatch(name: request.name, text: text, timeout: timeout) { output, completed in

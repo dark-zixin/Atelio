@@ -129,15 +129,12 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         case exited     // 終端裡的程式結束了
     }
 
-    /// 取得目前 session 狀態（每次查詢時即時計算，順便清理失效的 ownerPID）
+    /// 取得目前 session 狀態（每次查詢時即時計算）
     var status: Status {
         if !isRunning { return .exited }
-        // 檢查 ownerPID 是否還活著
-        if let owner = ownerPID {
-            if kill(owner, 0) != 0 {
-                ownerPID = nil
-                return .unowned
-            }
+        // 檢查 ownerPID 是否還活著（不清除 ownerPID，保持 session 鎖定）
+        if let owner = ownerPID, kill(owner, 0) != 0 {
+            return .unowned
         }
         return isScreenIdle ? .idle : .busy
     }
