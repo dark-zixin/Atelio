@@ -90,23 +90,18 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     /// 送出文字到終端並等待完成
     ///
-    /// 事件驅動偵測：CaptureTerminalView 在 dataReceived 中即時檢查 prompt pattern，
-    /// 偵測到 prompt 後等 0.5 秒確認 → 回傳擷取的完整輸出。
+    /// 回傳完整 buffer（含 scrollback），與 wait/screen 一致。
     func dispatch(text: String, timeout: Int, completion: @escaping (String, Bool) -> Void) {
         guard isRunning else {
             completion("", false)
             return
         }
 
-        // 記錄 dispatch 前的 full buffer（用於 snapshot diff）
-        let preBuffer = terminalView.readFullBuffer()
-
         // 開始擷取 + 完成偵測
         terminalView.startCapture(timeout: timeout) { [weak self] _, completed in
             guard let self = self else { return }
-            let postBuffer = self.terminalView.readFullBuffer()
-            let output = self.truncateIfNeeded(self.extractNewContent(pre: preBuffer, post: postBuffer))
-            completion(output, completed)
+            let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBuffer())
+            completion(fullBuffer, completed)
         }
 
         // 先送文字，稍後再送 Enter（\r），避免 TUI 把整段當成 paste 處理
@@ -226,41 +221,6 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     }
 
     // MARK: - 輸出擷取（snapshot diff）
-
-    /// 用共同前綴 diff 提取新增內容
-    ///
-    /// 找 pre 和 post buffer 的最長共同前綴，前綴之後就是新內容。
-    /// 如果找不到可靠重疊，退回整個 post buffer（寧多勿少）。
-    private func extractNewContent(pre: String, post: String) -> String {
-        let preLines = pre.components(separatedBy: "\n")
-        let postLines = post.components(separatedBy: "\n")
-
-        // 找最長共同前綴（逐行比對）
-        var commonEnd = 0
-        let minCount = min(preLines.count, postLines.count)
-        for i in 0..<minCount {
-            if preLines[i] == postLines[i] {
-                commonEnd = i + 1
-            } else {
-                break
-            }
-        }
-
-        // 新增內容 = 共同前綴之後的部分
-        var newLines = Array(postLines.suffix(from: commonEnd))
-
-        // 如果完全沒有共同前綴（clear 或 TUI 重繪），退回整個 post
-        if commonEnd == 0 && !pre.isEmpty {
-            return post
-        }
-
-        // 移除尾部空行
-        while newLines.last?.trimmingCharacters(in: .whitespaces).isEmpty == true {
-            newLines.removeLast()
-        }
-
-        return newLines.joined(separator: "\n")
-    }
 
     /// 輸出大小上限（256KB）
     private let maxOutputBytes = 256 * 1024
