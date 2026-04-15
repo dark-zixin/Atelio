@@ -6,6 +6,9 @@ class IPCServer {
 
     static let socketPath = "/tmp/atelio.sock"
 
+    /// 暫時的回應 logging 目錄（設為 nil 關閉 logging）
+    static var responseLogDir: String? = "/Users/dark/work/macos-apps/atelio/temp_doc/0414_openclaw_denoise_test/raw"
+
     private let manager: TerminalManager
     private var serverFd: Int32 = -1
     private var isRunning = false
@@ -97,6 +100,9 @@ class IPCServer {
             // 處理請求
             let response = handleRequest(request)
 
+            // 暫時的 logging：記錄有 output 的回應
+            Self.logResponse(request: request, response: response)
+
             // 送出回應
             let responseData = try IPCFraming.encode(response)
             try IPCFraming.writeMessage(responseData, to: fd)
@@ -107,6 +113,38 @@ class IPCServer {
                 try? IPCFraming.writeMessage(data, to: fd)
             }
         }
+    }
+
+    // MARK: - 回應 Logging（暫時用於去噪測試）
+
+    /// 記錄有 output 內容的回應到檔案
+    private static func logResponse(request: IPCRequest, response: IPCResponse) {
+        guard let logDir = responseLogDir,
+              let output = response.output, !output.isEmpty else { return }
+
+        let timestamp = {
+            let df = DateFormatter()
+            df.dateFormat = "HHmmss"
+            return df.string(from: Date())
+        }()
+
+        let filename = "\(request.name)_\(request.command.rawValue)_\(timestamp).txt"
+        let path = (logDir as NSString).appendingPathComponent(filename)
+
+        var content = ""
+        content += "session: \(request.name)\n"
+        content += "command: \(request.command.rawValue)\n"
+        if let text = request.text {
+            content += "text: \(text)\n"
+        }
+        content += "success: \(response.success)\n"
+        content += "timeout: \(response.timeout ?? false)\n"
+        content += "timestamp: \(Date())\n"
+        content += "output_length: \(output.count)\n"
+        content += "===== OUTPUT =====\n"
+        content += output
+
+        try? content.write(toFile: path, atomically: true, encoding: .utf8)
     }
 
     // MARK: - 請求路由

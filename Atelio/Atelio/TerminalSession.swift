@@ -100,7 +100,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         // 開始擷取 + 完成偵測
         terminalView.startCapture(timeout: timeout) { [weak self] _, completed in
             guard let self = self else { return }
-            let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBuffer())
+            let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBufferWithTranscript())
             completion(fullBuffer, completed)
         }
 
@@ -136,7 +136,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     /// 讀取目前終端完整畫面內容（含 scrollback buffer）
     func readScreen() -> String {
-        return terminalView.readFullBuffer()
+        return terminalView.readFullBufferWithTranscript()
     }
 
     /// 不送文字，只等待畫面穩定
@@ -151,7 +151,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
         // 已經 idle → 立刻回傳
         if terminalView.isScreenIdle {
-            let fullBuffer = truncateIfNeeded(terminalView.readFullBuffer())
+            let fullBuffer = truncateIfNeeded(terminalView.readFullBufferWithTranscript())
             completion(fullBuffer, true)
             return
         }
@@ -168,11 +168,11 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
             }
             if self.terminalView.isScreenIdle {
                 checkTimer.cancel()
-                let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBuffer())
+                let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBufferWithTranscript())
                 completion(fullBuffer, true)
             } else if Date() >= deadline {
                 checkTimer.cancel()
-                let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBuffer())
+                let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBufferWithTranscript())
                 completion(fullBuffer, false)
             }
         }
@@ -201,6 +201,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     func forceClose() {
         terminalView.stopCapture()
         terminalView.stopIdleMonitor()
+        terminalView.resetTranscript()
         terminalView.process?.terminate()
         isRunning = false
         pendingCloseKey = nil
