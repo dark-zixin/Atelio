@@ -26,9 +26,6 @@ enum TerminalDenoise {
         // L1.4 — status bar 去重（多組只留最後一組）
         result = deduplicateStatusBar(result)
 
-        // L1.5 — snapshot gap 重疊行去除
-        result = removeGapOverlap(result)
-
         return result
     }
 
@@ -140,12 +137,12 @@ enum TerminalDenoise {
 
     // MARK: - L1.4 Status Bar 去重
 
-    /// prompt 指示符字元
-    private static let promptChars: Set<Character> = ["❯", "›", ">"]
+    /// prompt 指示符字元（只用明確的 AI CLI 專用符號，不含通用的 >）
+    private static let promptChars: Set<Character> = ["❯", "›"]
 
     /// 去除重複的 status bar 區塊，只保留最後一組
     ///
-    /// 邏輯：以 prompt 指示符（❯/›/>）為錨點，取上 2 下 3 行作為區塊，
+    /// 邏輯：以 prompt 指示符（❯/›）為錨點，取上 2 下 3 行作為區塊，
     /// 模糊比對（雙向 LCS 取最小值，閾值 50%）判斷是否重複。
     private static func deduplicateStatusBar(_ text: String) -> String {
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
@@ -251,64 +248,5 @@ enum TerminalDenoise {
         let ratioA = Double(lcsLen) / Double(m)
         let ratioB = Double(lcsLen) / Double(n)
         return min(ratioA, ratioB)
-    }
-
-    // MARK: - L1.5 Snapshot Gap 重疊行去除
-
-    /// 去除 [snapshot gap] 前後的重疊行
-    ///
-    /// gap 上方取 2 行非空行，在 gap 下方 20 行內尋找連續匹配。
-    /// 匹配到的話，刪除 gap 下方從 gap+1 到匹配結束的行（保留 gap 前的、刪 gap 後重複的）。
-    private static func removeGapOverlap(_ text: String) -> String {
-        let gapMarker = "... [snapshot gap] ..."
-        let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-
-        let gapIndices = lines.indices.filter { lines[$0].trimmingCharacters(in: .whitespaces) == gapMarker }
-        guard !gapIndices.isEmpty else { return text }
-
-        var removeSet = Set<Int>()
-
-        for gapIdx in gapIndices {
-            // 取 gap 上方 2 行（跳過空行）
-            var aboveLines: [String] = []
-            var idx = gapIdx - 1
-            while idx >= 0 && aboveLines.count < 2 {
-                let stripped = lines[idx].trimmingCharacters(in: .whitespaces)
-                if !stripped.isEmpty {
-                    aboveLines.insert(lines[idx], at: 0)
-                }
-                idx -= 1
-            }
-
-            guard aboveLines.count == 2 else { continue }
-
-            // 在 gap 下方 20 行內尋找連續匹配
-            let searchEnd = min(lines.count, gapIdx + 1 + 20)
-            for j in (gapIdx + 1)..<searchEnd {
-                var allMatch = true
-                for (k, aboveLine) in aboveLines.enumerated() {
-                    guard j + k < lines.count else { allMatch = false; break }
-                    if lines[j + k].trimmingCharacters(in: .whitespaces) != aboveLine.trimmingCharacters(in: .whitespaces) {
-                        allMatch = false
-                        break
-                    }
-                }
-
-                if allMatch {
-                    // 刪除 gap+1 到匹配結束
-                    for i in (gapIdx + 1)..<(j + aboveLines.count) {
-                        removeSet.insert(i)
-                    }
-                    break
-                }
-            }
-        }
-
-        guard !removeSet.isEmpty else { return text }
-
-        let result = lines.enumerated()
-            .filter { !removeSet.contains($0.offset) }
-            .map { $0.element }
-        return result.joined(separator: "\n")
     }
 }

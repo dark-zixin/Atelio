@@ -137,7 +137,8 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     /// 讀取目前終端完整畫面內容（含 scrollback buffer，已去噪）
     func readScreen() -> String {
-        return TerminalDenoise.clean(terminalView.readFullBufferWithTranscript())
+        let raw = terminalView.readFullBufferWithTranscript()
+        return truncateIfNeeded(TerminalDenoise.clean(raw))
     }
 
     /// 不送文字，只等待畫面穩定
