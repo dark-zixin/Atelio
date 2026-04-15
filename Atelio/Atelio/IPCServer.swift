@@ -214,7 +214,7 @@ class IPCServer {
                 }
                 return
             } catch {
-                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: error.localizedDescription)
+                response = Self.mapManagerError(error)
             }
             semaphore.signal()
         }
@@ -264,7 +264,7 @@ class IPCServer {
 
         let waitResult = semaphore.wait(timeout: .now() + .seconds(timeout + 10))
         if waitResult == .timedOut {
-            response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, message: "IPC 超時")
+            response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "IPC 超時（server callback 未回傳）")
         }
         return response
     }
@@ -383,7 +383,7 @@ class IPCServer {
 
         let waitResult = semaphore.wait(timeout: .now() + .seconds(timeout + 10))
         if waitResult == .timedOut {
-            response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, message: "IPC 超時")
+            response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "IPC 超時（server callback 未回傳）")
         }
         return response
     }
@@ -423,8 +423,8 @@ class IPCServer {
                 return IPCResult.response(IPCResult.sessionNotFound, IPCResult.sessionNotFoundHint, message: error.localizedDescription)
             case .sessionNotRunning:
                 return IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint, message: error.localizedDescription)
-            default:
-                return IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: error.localizedDescription)
+            case .sessionExists, .invalidName:
+                return IPCResult.response(IPCResult.invalidRequest, IPCResult.invalidRequestHint, message: error.localizedDescription)
             }
         }
         return IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: error.localizedDescription)
