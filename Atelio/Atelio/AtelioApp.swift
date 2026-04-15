@@ -5,6 +5,13 @@ struct AtelioApp: App {
     @State private var manager = TerminalManager()
     @State private var ipcServer: IPCServer?
 
+    init() {
+        // 忽略 SIGPIPE：client 斷線時 write socket 會收到 SIGPIPE，
+        // 不處理的話會直接殺掉 App。忽略後 write 回傳 -1 + EPIPE，
+        // 由 IPCFraming.writeMessage 的錯誤處理接住。
+        signal(SIGPIPE, SIG_IGN)
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView(manager: manager)

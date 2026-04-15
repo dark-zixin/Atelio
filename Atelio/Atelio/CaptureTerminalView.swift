@@ -191,7 +191,11 @@ class CaptureTerminalView: LocalProcessTerminalView {
         isCapturing = false
         timeoutTimer?.cancel()
         timeoutTimer = nil
+        // 如果有等待中的 handler，回傳空結果讓呼叫端的 semaphore 被 signal
+        // （避免 forceClose 時 IPC 呼叫端卡到 timeout）
+        let handler = completionHandler
         completionHandler = nil
+        handler?("", false)
     }
 
     // MARK: - PTY 資料攔截
