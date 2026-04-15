@@ -100,7 +100,8 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         // 開始擷取 + 完成偵測
         terminalView.startCapture(timeout: timeout) { [weak self] _, completed in
             guard let self = self else { return }
-            let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBufferWithTranscript())
+            let raw = self.terminalView.readFullBufferWithTranscript()
+            let fullBuffer = self.truncateIfNeeded(TerminalDenoise.clean(raw))
             completion(fullBuffer, completed)
         }
 
@@ -134,9 +135,9 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         return isScreenIdle ? .idle : .busy
     }
 
-    /// 讀取目前終端完整畫面內容（含 scrollback buffer）
+    /// 讀取目前終端完整畫面內容（含 scrollback buffer，已去噪）
     func readScreen() -> String {
-        return terminalView.readFullBufferWithTranscript()
+        return TerminalDenoise.clean(terminalView.readFullBufferWithTranscript())
     }
 
     /// 不送文字，只等待畫面穩定
@@ -151,7 +152,8 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
         // 已經 idle → 立刻回傳
         if terminalView.isScreenIdle {
-            let fullBuffer = truncateIfNeeded(terminalView.readFullBufferWithTranscript())
+            let raw = terminalView.readFullBufferWithTranscript()
+            let fullBuffer = truncateIfNeeded(TerminalDenoise.clean(raw))
             completion(fullBuffer, true)
             return
         }
@@ -168,11 +170,13 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
             }
             if self.terminalView.isScreenIdle {
                 checkTimer.cancel()
-                let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBufferWithTranscript())
+                let raw = self.terminalView.readFullBufferWithTranscript()
+                let fullBuffer = self.truncateIfNeeded(TerminalDenoise.clean(raw))
                 completion(fullBuffer, true)
             } else if Date() >= deadline {
                 checkTimer.cancel()
-                let fullBuffer = self.truncateIfNeeded(self.terminalView.readFullBufferWithTranscript())
+                let raw = self.terminalView.readFullBufferWithTranscript()
+                let fullBuffer = self.truncateIfNeeded(TerminalDenoise.clean(raw))
                 completion(fullBuffer, false)
             }
         }
