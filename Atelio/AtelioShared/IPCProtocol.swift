@@ -4,7 +4,7 @@ import Foundation
 
 public struct IPCRequest: Codable {
     public enum Command: String, Codable {
-        case open, dispatch, status, close, screen, wait, list
+        case open, dispatch, status, close, screen, wait, list, notify
     }
 
     public let command: Command
@@ -79,6 +79,13 @@ public enum IPCResult {
 
     public static let internalError = "internal_error"
     public static let internalErrorHint = "An internal server error occurred. Use screen or status to check the session state before retrying."
+
+    // hook 完成偵測
+    public static let hookTurnEnded = "hook_turn_ended"
+    public static let hookTurnEndedHint = "The AI CLI confirmed task completion via hook. The output is the final result — no further wait needed."
+
+    public static let turnInProgress = "turn_in_progress"
+    public static let turnInProgressHint = "The AI CLI is still working (confirmed via hook). Use wait to continue waiting for completion. Output is omitted to save tokens."
 
     // 非 dispatch/wait 的一般成功
     public static let ok = "ok"

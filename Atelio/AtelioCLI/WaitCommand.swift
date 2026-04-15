@@ -23,8 +23,12 @@ struct WaitCommand: ParsableCommand {
         }
 
         switch response.result {
-        case IPCResult.quietWindowMet:
-            break
+        case IPCResult.quietWindowMet, IPCResult.hookTurnEnded:
+            break  // 完成（hash 穩定或 hook 確認）
+        case IPCResult.turnInProgress:
+            fputs(response.resultHint, stderr)
+            fputs("\n", stderr)
+            throw ExitCode(1)
         case IPCResult.deadlineReached:
             fputs("（\(response.resultHint)）\n", stderr)
             throw ExitCode(1)

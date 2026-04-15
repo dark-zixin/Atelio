@@ -26,6 +26,11 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     /// 擁有者的 PPID（第一次 dispatch 時記錄，用於防止不同 AI 操作同一 session）
     var ownerPID: Int32?
 
+    private(set) var turnEndReceived = false
+    private(set) var turnActive = false
+    private var postTurnMonitorTimer: DispatchSourceTimer?
+    private var postTurnLastHash = ""
+
     // MARK: - 初始化
 
     private static let dateFormatter: DateFormatter = {
@@ -53,6 +58,8 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         // 環境變數：加 CLAUDE_CODE_NO_FLICKER=1 讓 Claude Code 使用 alt screen buffer
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
         env.append("CLAUDE_CODE_NO_FLICKER=1")
+        env.append("ATELIO_SESSION=\(name)")
+        env.append("ATELIO_SOCKET=/tmp/atelio.sock")
 
         if !directory.isEmpty {
             let escapedDir = directory.replacingOccurrences(of: "'", with: "'\\''")
@@ -204,6 +211,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     /// 關閉 session（直接關閉，不檢查狀態）
     func forceClose() {
+        stopPostTurnMonitor()
         terminalView.stopCapture()
         terminalView.stopIdleMonitor()
         terminalView.resetTranscript()
@@ -270,4 +278,81 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     func setTerminalTitle(source: LocalProcessTerminalView, title: String) {}
 
     func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
+
+    // MARK: - Hook 觀察（turn_end 後畫面變化記錄）
+
+    func handleTurnStart() {
+        turnActive = true
+        appendHookLog("turn_start")
+        // 動態調整穩定門檻：hash 降級為 60 秒 fallback
+        terminalView.stabilityThreshold = 60
+        startPostTurnMonitor()
+    }
+
+    func handleTurnEnd() {
+        turnActive = false
+        turnEndReceived = true
+        appendHookLog("turn_end")
+        // drain 模式：1 秒穩定就完成
+        terminalView.stabilityThreshold = 1
+        // 重置穩定計時，讓 drain 從現在開始算
+        terminalView.stableStartTime = Date()
+
+        // 如果 dispatch 已回傳（不在 capture 中），記錄 late end
+        if !terminalView.isCapturing {
+            appendHookLog("fallback_late_end")
+        }
+    }
+
+    /// capture 結束後重置 hook 狀態
+    func resetAfterCapture() {
+        turnEndReceived = false
+        terminalView.stabilityThreshold = 5
+    }
+
+    private func startPostTurnMonitor() {
+        stopPostTurnMonitor()
+        postTurnLastHash = terminalView.stableHash(terminalView.readTerminalBuffer())
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + .milliseconds(100), repeating: .milliseconds(100))
+        timer.setEventHandler { [weak self] in
+            self?.checkPostTurnScreen()
+        }
+        timer.resume()
+        postTurnMonitorTimer = timer
+    }
+
+    private func stopPostTurnMonitor() {
+        postTurnMonitorTimer?.cancel()
+        postTurnMonitorTimer = nil
+    }
+
+    private func checkPostTurnScreen() {
+        let screen = terminalView.readTerminalBuffer()
+        let hash = terminalView.stableHash(screen)
+        if hash != postTurnLastHash {
+            postTurnLastHash = hash
+            appendHookLog("screen_changed")
+        }
+    }
+
+    private static let hookLogFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    func appendHookLog(_ event: String) {
+        let logDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".atelio")
+        try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
+        let logFile = logDir.appendingPathComponent("hook.log")
+        let line = "\(Self.hookLogFormatter.string(from: Date())) session=\(name) event=\(event)\n"
+        if let handle = try? FileHandle(forWritingTo: logFile) {
+            handle.seekToEndOfFile()
+            handle.write(line.data(using: .utf8)!)
+            handle.closeFile()
+        } else {
+            try? line.write(to: logFile, atomically: true, encoding: .utf8)
+        }
+    }
 }

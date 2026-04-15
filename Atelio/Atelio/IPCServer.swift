@@ -164,6 +164,8 @@ class IPCServer {
             return handleWait(request)
         case .list:
             return handleList(request)
+        case .notify:
+            return handleNotify(request)
         }
     }
 
@@ -182,6 +184,23 @@ class IPCServer {
             }
         }
         return nil
+    }
+
+    private func handleNotify(_ request: IPCRequest) -> IPCResponse {
+        let event = request.text ?? "unknown"
+        let sessionName = request.name
+
+        // 找到對應 session 並通知（dispatch 到 main thread，因為 terminal 操作必須在 main thread）
+        DispatchQueue.main.async { [weak self] in
+            guard let session = self?.manager.sessions[sessionName] else { return }
+            switch event {
+            case "turn_start": session.handleTurnStart()
+            case "turn_end": session.handleTurnEnd()
+            default: break
+            }
+        }
+
+        return IPCResult.response(IPCResult.ok, IPCResult.okHint, message: "已收到 \(event) 通知（session: \(sessionName)）")
     }
 
     private func handleOpen(_ request: IPCRequest) -> IPCResponse {
@@ -246,12 +265,27 @@ class IPCServer {
                     return
                 }
 
+                let session = self.manager.sessions[request.name]
                 try self.manager.dispatch(name: request.name, text: text, timeout: timeout) { output, completed in
                     if completed {
-                        response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
+                        if session?.turnEndReceived == true {
+                            response = IPCResult.response(IPCResult.hookTurnEnded, IPCResult.hookTurnEndedHint, output: output)
+                        } else {
+                            if session?.turnActive == true {
+                                // hook session + hash 穩定觸發（fallback）
+                                session?.appendHookLog("fallback_triggered")
+                            }
+                            response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
+                        }
                     } else {
-                        response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, output: output)
+                        if session?.turnActive == true {
+                            // AI 還在工作，不帶 output 省 token
+                            response = IPCResult.response(IPCResult.turnInProgress, IPCResult.turnInProgressHint)
+                        } else {
+                            response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, output: output)
+                        }
                     }
+                    session?.resetAfterCapture()
                     semaphore.signal()
                 }
             } catch {
@@ -367,12 +401,25 @@ class IPCServer {
                     return
                 }
 
+                let session = self.manager.sessions[request.name]
                 try self.manager.wait(name: request.name, timeout: timeout) { output, completed in
                     if completed {
-                        response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
+                        if session?.turnEndReceived == true {
+                            response = IPCResult.response(IPCResult.hookTurnEnded, IPCResult.hookTurnEndedHint, output: output)
+                        } else {
+                            if session?.turnActive == true {
+                                session?.appendHookLog("fallback_triggered")
+                            }
+                            response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
+                        }
                     } else {
-                        response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, output: output)
+                        if session?.turnActive == true {
+                            response = IPCResult.response(IPCResult.turnInProgress, IPCResult.turnInProgressHint)
+                        } else {
+                            response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, output: output)
+                        }
                     }
+                    session?.resetAfterCapture()
                     semaphore.signal()
                 }
             } catch {

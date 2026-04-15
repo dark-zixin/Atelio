@@ -41,7 +41,7 @@ class CaptureTerminalView: LocalProcessTerminalView {
     private var lastScreenHash = ""
 
     /// 畫面穩定開始時間（hash 不再變化的時間點）
-    private var stableStartTime: Date?
+    var stableStartTime: Date?
 
     // MARK: - TUI Transcript 累積
 
@@ -303,7 +303,7 @@ class CaptureTerminalView: LocalProcessTerminalView {
         return String(data: data, encoding: .utf8) ?? ""
     }
 
-    private func stableHash(_ text: String) -> String {
+    func stableHash(_ text: String) -> String {
         let cleaned = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")
         return "\(cleaned.hashValue)"
     }

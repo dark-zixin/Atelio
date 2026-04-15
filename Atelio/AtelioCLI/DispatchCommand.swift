@@ -28,8 +28,13 @@ struct DispatchCommand: ParsableCommand {
 
         // 根據 result 決定 exit code
         switch response.result {
-        case IPCResult.quietWindowMet:
-            break  // 正常完成
+        case IPCResult.quietWindowMet, IPCResult.hookTurnEnded:
+            break  // 完成（hash 穩定或 hook 確認）
+        case IPCResult.turnInProgress:
+            // AI 還在工作，hint 已在 output 位置（無 output）
+            fputs(response.resultHint, stderr)
+            fputs("\n", stderr)
+            throw ExitCode(1)
         case IPCResult.deadlineReached:
             fputs("（\(response.resultHint)）\n", stderr)
             throw ExitCode(1)
