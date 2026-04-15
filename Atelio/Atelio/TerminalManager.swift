@@ -73,7 +73,7 @@ class TerminalManager {
     /// 關閉指定 session（兩段式：busy 時需確認 key）
     func close(name: String, confirmKey: String?, completion: @escaping (IPCResponse) -> Void) {
         guard let session = sessions[name] else {
-            completion(IPCResponse(success: false, message: "找不到 session '\(name)'"))
+            completion(IPCResult.response(IPCResult.sessionNotFound, IPCResult.sessionNotFoundHint, message: "找不到 session '\(name)'"))
             return
         }
 
@@ -82,9 +82,9 @@ class TerminalManager {
             if session.validateCloseKey(key) {
                 session.forceClose()
                 sessions.removeValue(forKey: name)
-                completion(IPCResponse(success: true, message: "已關閉 session '\(name)'"))
+                completion(IPCResult.response(IPCResult.ok, IPCResult.okHint, message: "已關閉 session '\(name)'"))
             } else {
-                completion(IPCResponse(success: false, message: "確認 key 無效"))
+                completion(IPCResult.response(IPCResult.invalidRequest, IPCResult.invalidRequestHint, message: "確認 key 無效"))
             }
             return
         }
@@ -95,12 +95,12 @@ class TerminalManager {
             if isBusy {
                 // busy → 產生 key，要求確認
                 let key = session.generateCloseKey()
-                completion(IPCResponse(success: false, message: "session 仍在作業中。確認關閉請使用 --confirm \(key)"))
+                completion(IPCResult.response(IPCResult.invalidRequest, IPCResult.invalidRequestHint, message: "session 仍在作業中。確認關閉請使用 --confirm \(key)"))
             } else {
                 // idle → 直接關閉
                 session.forceClose()
                 self.sessions.removeValue(forKey: name)
-                completion(IPCResponse(success: true, message: "已關閉 session '\(name)'"))
+                completion(IPCResult.response(IPCResult.ok, IPCResult.okHint, message: "已關閉 session '\(name)'"))
             }
         }
     }

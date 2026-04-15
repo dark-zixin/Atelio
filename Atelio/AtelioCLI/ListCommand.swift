@@ -14,8 +14,7 @@ struct ListCommand: ParsableCommand {
         let request = IPCRequest(command: .list, name: "")
         let response = try IPCClient.send(request)
 
-        if response.success {
-            // 解析 JSON 陣列格式化輸出
+        if response.result == IPCResult.ok {
             if let output = response.output,
                let data = output.data(using: .utf8),
                let infos = try? JSONDecoder().decode([SessionInfo].self, from: data) {
@@ -32,7 +31,7 @@ struct ListCommand: ParsableCommand {
                 print(response.output ?? "無資料")
             }
         } else {
-            fputs(response.message ?? "未知錯誤", stderr)
+            fputs(response.message ?? response.resultHint, stderr)
             fputs("\n", stderr)
             throw ExitCode.failure
         }

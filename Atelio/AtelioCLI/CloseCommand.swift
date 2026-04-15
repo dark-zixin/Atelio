@@ -18,10 +18,10 @@ struct CloseCommand: ParsableCommand {
         let request = IPCRequest(command: .close, name: name, confirmKey: confirm)
         let response = try IPCClient.send(request)
 
-        if response.success {
+        if response.result == IPCResult.ok {
             print(response.message ?? "OK")
         } else {
-            fputs(response.message ?? "未知錯誤", stderr)
+            fputs(response.message ?? response.resultHint, stderr)
             fputs("\n", stderr)
             throw ExitCode.failure
         }

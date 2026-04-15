@@ -15,12 +15,12 @@ struct ScreenCommand: ParsableCommand {
         let request = IPCRequest(command: .screen, name: name)
         let response = try IPCClient.send(request)
 
-        if response.success {
+        if response.result == IPCResult.ok {
             if let output = response.output {
                 print(output)
             }
         } else {
-            fputs(response.message ?? "未知錯誤", stderr)
+            fputs(response.message ?? response.resultHint, stderr)
             fputs("\n", stderr)
             throw ExitCode.failure
         }

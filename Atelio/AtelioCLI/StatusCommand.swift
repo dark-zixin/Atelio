@@ -15,10 +15,10 @@ struct StatusCommand: ParsableCommand {
         let request = IPCRequest(command: .status, name: name)
         let response = try IPCClient.send(request)
 
-        if response.success {
+        if response.result == IPCResult.ok {
             print(response.message ?? "OK")
         } else {
-            fputs(response.message ?? "未知錯誤", stderr)
+            fputs(response.message ?? response.resultHint, stderr)
             fputs("\n", stderr)
             throw ExitCode.failure
         }

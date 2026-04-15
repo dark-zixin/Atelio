@@ -24,10 +24,15 @@ struct OpenCommand: ParsableCommand {
         let request = IPCRequest(command: .open, name: name, dir: dir, cmd: cmd, purpose: purpose)
         let response = try IPCClient.send(request)
 
-        if response.success {
+        switch response.result {
+        case IPCResult.ok:
             print(response.message ?? "OK")
-        } else {
-            fputs(response.message ?? "未知錯誤", stderr)
+        case IPCResult.processExited:
+            fputs(response.message ?? response.resultHint, stderr)
+            fputs("\n", stderr)
+            throw ExitCode.failure
+        default:
+            fputs(response.message ?? response.resultHint, stderr)
             fputs("\n", stderr)
             throw ExitCode.failure
         }

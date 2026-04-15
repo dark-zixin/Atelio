@@ -21,18 +21,20 @@ struct DispatchCommand: ParsableCommand {
         let request = IPCRequest(command: .dispatch, name: name, text: text, timeout: timeout)
         let response = try IPCClient.send(request)
 
-        if response.success {
-            // 印出指令輸出到 stdout
-            if let output = response.output {
-                print(output)
-            }
-            // 如果超時，以非零 exit code 結束
-            if response.timeout == true {
-                fputs("（超時）\n", stderr)
-                throw ExitCode(1)
-            }
-        } else {
-            fputs(response.message ?? "未知錯誤", stderr)
+        // 印出 output（如果有）
+        if let output = response.output {
+            print(output)
+        }
+
+        // 根據 result 決定 exit code
+        switch response.result {
+        case IPCResult.quietWindowMet:
+            break  // 正常完成
+        case IPCResult.deadlineReached:
+            fputs("（\(response.resultHint)）\n", stderr)
+            throw ExitCode(1)
+        default:
+            fputs(response.message ?? response.resultHint, stderr)
             fputs("\n", stderr)
             throw ExitCode.failure
         }

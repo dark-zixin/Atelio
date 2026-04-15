@@ -108,7 +108,7 @@ class IPCServer {
             try IPCFraming.writeMessage(responseData, to: fd)
         } catch {
             // 嘗試送出錯誤回應
-            let errorResponse = IPCResponse(success: false, message: error.localizedDescription)
+            let errorResponse = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: error.localizedDescription)
             if let data = try? IPCFraming.encode(errorResponse) {
                 try? IPCFraming.writeMessage(data, to: fd)
             }
@@ -137,8 +137,7 @@ class IPCServer {
         if let text = request.text {
             content += "text: \(text)\n"
         }
-        content += "success: \(response.success)\n"
-        content += "timeout: \(response.timeout ?? false)\n"
+        content += "result: \(response.result)\n"
         content += "timestamp: \(Date())\n"
         content += "output_length: \(output.count)\n"
         content += "===== OUTPUT =====\n"
@@ -169,15 +168,17 @@ class IPCServer {
     }
 
     /// 驗證 callerPID 是否有權操作 session（dispatch/close/wait 共用）
-    /// 回傳 nil 表示通過，否則回傳錯誤訊息
-    private func verifyOwner(session: TerminalSession, callerPID: Int32?, command: String) -> String? {
+    /// 回傳 nil 表示通過，否則回傳 IPCResponse
+    private func verifyOwner(session: TerminalSession, callerPID: Int32?, command: String) -> IPCResponse? {
         guard let callerPID = callerPID else { return nil }
         if let owner = session.ownerPID {
             if kill(owner, 0) != 0 {
-                // owner 已死 → session 鎖定，只有 screen 可用
-                return "此 session 的擁有者已斷開（owner=\(owner)），無法 \(command)（請從 UI 關閉或用 screen 查看）"
+                // owner 已死 → session 鎖定
+                return IPCResult.response(IPCResult.ownerMismatch, IPCResult.ownerMismatchHint,
+                    message: "此 session 的擁有者已斷開（owner=\(owner)），無法 \(command)")
             } else if owner != callerPID {
-                return "此 session 由其他程序擁有（owner=\(owner)），無權 \(command)"
+                return IPCResult.response(IPCResult.ownerMismatch, IPCResult.ownerMismatchHint,
+                    message: "此 session 由其他程序擁有（owner=\(owner)），無權 \(command)")
             }
         }
         return nil
@@ -187,36 +188,33 @@ class IPCServer {
         let dir = request.dir ?? "/tmp"
         let cmd = request.cmd ?? "/bin/zsh"
         let semaphore = DispatchSemaphore(value: 0)
-        var response = IPCResponse(success: false, message: "未知錯誤")
+        var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else {
-                response = IPCResponse(success: false, message: "Server 已關閉")
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
                 semaphore.signal()
                 return
             }
             do {
                 let purpose = request.purpose ?? ""
                 let session = try self.manager.open(name: request.name, purpose: purpose, directory: dir, command: cmd)
-                // open 時就記錄 ownerPID，session 從建立那刻起就有 owner
                 session.ownerPID = request.callerPID
-                // 等待 shell 初始 prompt 出現才回傳（確保 session 就緒）
                 session.waitForReady(timeout: 5) { [weak self] ready in
                     if ready {
-                        response = IPCResponse(success: true, message: "已開啟 session '\(session.name)'")
+                        response = IPCResult.response(IPCResult.ok, IPCResult.okHint, message: "已開啟 session '\(session.name)'")
                     } else if session.isRunning {
-                        // process 還活著但就緒超時（可能是 TUI 初始化慢）
-                        response = IPCResponse(success: true, message: "已開啟 session '\(session.name)'（就緒超時）")
+                        response = IPCResult.response(IPCResult.ok, IPCResult.okHint, message: "已開啟 session '\(session.name)'（就緒超時）")
                     } else {
-                        // process 已死亡（cd 失敗、exec 失敗等）→ 移除並回報失敗
                         self?.manager.sessions.removeValue(forKey: request.name)
-                        response = IPCResponse(success: false, message: "session '\(request.name)' 啟動失敗（process 已結束）")
+                        response = IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint,
+                            message: "session '\(request.name)' 啟動失敗（process 已結束）")
                     }
                     semaphore.signal()
                 }
                 return
             } catch {
-                response = IPCResponse(success: false, message: error.localizedDescription)
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: error.localizedDescription)
             }
             semaphore.signal()
         }
@@ -227,52 +225,57 @@ class IPCServer {
 
     private func handleDispatch(_ request: IPCRequest) -> IPCResponse {
         guard let text = request.text else {
-            return IPCResponse(success: false, message: "缺少 text 參數")
+            return IPCResult.response(IPCResult.invalidRequest, IPCResult.invalidRequestHint, message: "缺少 text 參數")
         }
         let timeout = request.timeout ?? 60
         let semaphore = DispatchSemaphore(value: 0)
-        var response = IPCResponse(success: false, message: "未知錯誤")
+        var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else {
-                response = IPCResponse(success: false, message: "Server 已關閉")
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
                 semaphore.signal()
                 return
             }
             do {
                 // PPID owner 驗證
                 if let session = self.manager.sessions[request.name],
-                   let error = self.verifyOwner(session: session, callerPID: request.callerPID, command: "dispatch") {
-                    response = IPCResponse(success: false, message: error)
+                   let ownerError = self.verifyOwner(session: session, callerPID: request.callerPID, command: "dispatch") {
+                    response = ownerError
                     semaphore.signal()
                     return
                 }
 
                 try self.manager.dispatch(name: request.name, text: text, timeout: timeout) { output, completed in
-                    response = IPCResponse(success: true, output: output, timeout: !completed)
+                    if completed {
+                        response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
+                    } else {
+                        response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, output: output)
+                    }
                     semaphore.signal()
                 }
             } catch {
-                response = IPCResponse(success: false, message: error.localizedDescription)
+                // ManagerError 轉成對應的 result
+                let r = Self.mapManagerError(error)
+                response = r
                 semaphore.signal()
             }
         }
 
-        // 等待完成偵測（加安全邊際）
         let waitResult = semaphore.wait(timeout: .now() + .seconds(timeout + 10))
         if waitResult == .timedOut {
-            response = IPCResponse(success: false, message: "IPC 超時")
+            response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, message: "IPC 超時")
         }
         return response
     }
 
     private func handleStatus(_ request: IPCRequest) -> IPCResponse {
         let semaphore = DispatchSemaphore(value: 0)
-        var response = IPCResponse(success: false, message: "未知錯誤")
+        var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else {
-                response = IPCResponse(success: false, message: "Server 已關閉")
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
                 semaphore.signal()
                 return
             }
@@ -280,9 +283,9 @@ class IPCServer {
                 let info = try self.manager.status(name: request.name)
                 let json = try JSONEncoder().encode(info)
                 let infoStr = String(data: json, encoding: .utf8) ?? "{}"
-                response = IPCResponse(success: true, message: infoStr)
+                response = IPCResult.response(IPCResult.ok, IPCResult.okHint, message: infoStr)
             } catch {
-                response = IPCResponse(success: false, message: error.localizedDescription)
+                response = Self.mapManagerError(error)
             }
             semaphore.signal()
         }
@@ -293,18 +296,18 @@ class IPCServer {
 
     private func handleClose(_ request: IPCRequest) -> IPCResponse {
         let semaphore = DispatchSemaphore(value: 0)
-        var response = IPCResponse(success: false, message: "未知錯誤")
+        var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else {
-                response = IPCResponse(success: false, message: "Server 已關閉")
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
                 semaphore.signal()
                 return
             }
             // PPID owner 驗證
             if let session = self.manager.sessions[request.name],
-               let error = self.verifyOwner(session: session, callerPID: request.callerPID, command: "close") {
-                response = IPCResponse(success: false, message: error)
+               let ownerError = self.verifyOwner(session: session, callerPID: request.callerPID, command: "close") {
+                response = ownerError
                 semaphore.signal()
                 return
             }
@@ -314,29 +317,28 @@ class IPCServer {
             }
         }
 
-        // close 的 busy 檢查需要 2 秒，加安全邊際
         let waitResult = semaphore.wait(timeout: .now() + .seconds(10))
         if waitResult == .timedOut {
-            response = IPCResponse(success: false, message: "close 操作超時")
+            response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "close 操作超時")
         }
         return response
     }
 
     private func handleScreen(_ request: IPCRequest) -> IPCResponse {
         let semaphore = DispatchSemaphore(value: 0)
-        var response = IPCResponse(success: false, message: "未知錯誤")
+        var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else {
-                response = IPCResponse(success: false, message: "Server 已關閉")
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
                 semaphore.signal()
                 return
             }
             do {
                 let content = try self.manager.screen(name: request.name)
-                response = IPCResponse(success: true, output: content)
+                response = IPCResult.response(IPCResult.ok, IPCResult.okHint, output: content)
             } catch {
-                response = IPCResponse(success: false, message: error.localizedDescription)
+                response = Self.mapManagerError(error)
             }
             semaphore.signal()
         }
@@ -348,47 +350,51 @@ class IPCServer {
     private func handleWait(_ request: IPCRequest) -> IPCResponse {
         let timeout = request.timeout ?? 60
         let semaphore = DispatchSemaphore(value: 0)
-        var response = IPCResponse(success: false, message: "未知錯誤")
+        var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else {
-                response = IPCResponse(success: false, message: "Server 已關閉")
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
                 semaphore.signal()
                 return
             }
             do {
                 // PPID owner 驗證
                 if let session = self.manager.sessions[request.name],
-                   let error = self.verifyOwner(session: session, callerPID: request.callerPID, command: "wait") {
-                    response = IPCResponse(success: false, message: error)
+                   let ownerError = self.verifyOwner(session: session, callerPID: request.callerPID, command: "wait") {
+                    response = ownerError
                     semaphore.signal()
                     return
                 }
 
                 try self.manager.wait(name: request.name, timeout: timeout) { output, completed in
-                    response = IPCResponse(success: true, output: output, timeout: !completed)
+                    if completed {
+                        response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
+                    } else {
+                        response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, output: output)
+                    }
                     semaphore.signal()
                 }
             } catch {
-                response = IPCResponse(success: false, message: error.localizedDescription)
+                response = Self.mapManagerError(error)
                 semaphore.signal()
             }
         }
 
         let waitResult = semaphore.wait(timeout: .now() + .seconds(timeout + 10))
         if waitResult == .timedOut {
-            response = IPCResponse(success: false, message: "IPC 超時")
+            response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, message: "IPC 超時")
         }
         return response
     }
 
     private func handleList(_ request: IPCRequest) -> IPCResponse {
         let semaphore = DispatchSemaphore(value: 0)
-        var response = IPCResponse(success: false, message: "未知錯誤")
+        var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else {
-                response = IPCResponse(success: false, message: "Server 已關閉")
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
                 semaphore.signal()
                 return
             }
@@ -396,14 +402,31 @@ class IPCServer {
                 let infos = self.manager.list()
                 let json = try JSONEncoder().encode(infos)
                 let jsonStr = String(data: json, encoding: .utf8) ?? "[]"
-                response = IPCResponse(success: true, output: jsonStr)
+                response = IPCResult.response(IPCResult.ok, IPCResult.okHint, output: jsonStr)
             } catch {
-                response = IPCResponse(success: false, message: error.localizedDescription)
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: error.localizedDescription)
             }
             semaphore.signal()
         }
 
         semaphore.wait()
         return response
+    }
+
+    // MARK: - 錯誤轉換
+
+    /// 將 ManagerError 轉成對應的 IPCResponse
+    private static func mapManagerError(_ error: Error) -> IPCResponse {
+        if let managerError = error as? ManagerError {
+            switch managerError {
+            case .sessionNotFound:
+                return IPCResult.response(IPCResult.sessionNotFound, IPCResult.sessionNotFoundHint, message: error.localizedDescription)
+            case .sessionNotRunning:
+                return IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint, message: error.localizedDescription)
+            default:
+                return IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: error.localizedDescription)
+            }
+        }
+        return IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: error.localizedDescription)
     }
 }

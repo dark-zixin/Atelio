@@ -33,16 +33,60 @@ public struct IPCRequest: Codable {
 // MARK: - 回應
 
 public struct IPCResponse: Codable {
-    public let success: Bool
-    public var message: String?
+    /// 回傳原因（主要判斷依據）
+    public let result: String
+    /// 自然語言提示，解釋 result 的含義和建議行動（給 AI 消費端）
+    public let resultHint: String
+    /// 終端畫面內容
     public var output: String?
-    public var timeout: Bool?
+    /// 錯誤訊息或補充資訊
+    public var message: String?
 
-    public init(success: Bool, message: String? = nil, output: String? = nil, timeout: Bool? = nil) {
-        self.success = success
-        self.message = message
+    public init(result: String, resultHint: String, output: String? = nil, message: String? = nil) {
+        self.result = result
+        self.resultHint = resultHint
         self.output = output
-        self.timeout = timeout
+        self.message = message
+    }
+}
+
+/// IPC 回應的 result 枚舉值和對應的 hint
+public enum IPCResult {
+    // dispatch/wait 正常回傳
+    public static let quietWindowMet = "quiet_window_met"
+    public static let quietWindowMetHint = "No visible screen changes detected for the quiet window period. This does not mean the task is complete — check the output to determine next steps."
+
+    public static let deadlineReached = "deadline_reached"
+    public static let deadlineReachedHint = "The specified wait time has been reached. The session may still be active — check the output to decide whether to wait again, check screen, or send a new command."
+
+    // session 生命週期
+    public static let processExited = "process_exited"
+    public static let processExitedHint = "The terminal process has exited. This session can no longer accept dispatch or wait commands. Open a new session if needed."
+
+    public static let sessionClosed = "session_closed"
+    public static let sessionClosedHint = "The session has been closed. Do not retry this session — open a new one if needed."
+
+    // 權限與查找
+    public static let ownerMismatch = "owner_mismatch"
+    public static let ownerMismatchHint = "This session is owned by another process. Only the screen command is available for read-only access."
+
+    public static let sessionNotFound = "session_not_found"
+    public static let sessionNotFoundHint = "The specified session does not exist. Verify the session name or open a new session."
+
+    // 請求層級
+    public static let invalidRequest = "invalid_request"
+    public static let invalidRequestHint = "The request is missing required parameters. Fix the request and retry."
+
+    public static let internalError = "internal_error"
+    public static let internalErrorHint = "An internal server error occurred. Use screen or status to check the session state before retrying."
+
+    // 非 dispatch/wait 的一般成功
+    public static let ok = "ok"
+    public static let okHint = "The operation completed successfully."
+
+    /// 快速建構 IPCResponse
+    public static func response(_ result: String, _ hint: String, output: String? = nil, message: String? = nil) -> IPCResponse {
+        IPCResponse(result: result, resultHint: hint, output: output, message: message)
     }
 }
 

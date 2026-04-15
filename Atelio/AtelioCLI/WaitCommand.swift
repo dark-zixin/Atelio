@@ -18,16 +18,18 @@ struct WaitCommand: ParsableCommand {
         let request = IPCRequest(command: .wait, name: name, timeout: timeout)
         let response = try IPCClient.send(request)
 
-        if response.success {
-            if let output = response.output {
-                print(output)
-            }
-            if response.timeout == true {
-                fputs("（超時）\n", stderr)
-                throw ExitCode(1)
-            }
-        } else {
-            fputs(response.message ?? "未知錯誤", stderr)
+        if let output = response.output {
+            print(output)
+        }
+
+        switch response.result {
+        case IPCResult.quietWindowMet:
+            break
+        case IPCResult.deadlineReached:
+            fputs("（\(response.resultHint)）\n", stderr)
+            throw ExitCode(1)
+        default:
+            fputs(response.message ?? response.resultHint, stderr)
             fputs("\n", stderr)
             throw ExitCode.failure
         }
