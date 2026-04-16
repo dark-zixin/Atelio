@@ -11,8 +11,14 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     let purpose: String
     let createdAt: Date
 
-    /// SwiftTerm 終端 view（使用 CaptureTerminalView 攔截輸出）
-    let terminalView: CaptureTerminalView
+    /// SwiftTerm 終端 view
+    let terminalView: LocalProcessTerminalView
+
+    /// Turn 完成偵測協調器
+    let coordinator: TurnCoordinator
+
+    /// Transcript 累積器
+    let transcriptAccumulator: TranscriptAccumulator
 
     /// process 是否還在執行
     var isRunning = false
@@ -25,11 +31,6 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     /// 擁有者的 PPID（第一次 dispatch 時記錄，用於防止不同 AI 操作同一 session）
     var ownerPID: Int32?
-
-    private(set) var turnEndReceived = false
-    private(set) var turnActive = false
-    private var postTurnMonitorTimer: DispatchSourceTimer?
-    private var postTurnLastHash = ""
 
     // MARK: - 初始化
 
@@ -44,18 +45,15 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         self.purpose = purpose
         self.createdAt = Date()
         self.workingDirectory = directory
-        self.terminalView = CaptureTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        self.terminalView = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        self.transcriptAccumulator = TranscriptAccumulator()
+        self.coordinator = TurnCoordinator(terminalView: terminalView, transcriptAccumulator: transcriptAccumulator)
 
         super.init()
 
         terminalView.processDelegate = self
-        terminalView.enableDebugLog(path: "/tmp/atelio_debug_\(name).csv")
 
         // 啟動 process
-        // 統一用 zsh -c 解析 command（支援帶參數、管線、複合指令）
-        // directory 用單引號 escape（路徑可能有空格）
-        // 不加 exec（會破壞複合指令語義）
-        // 環境變數：加 CLAUDE_CODE_NO_FLICKER=1 讓 Claude Code 使用 alt screen buffer
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
         env.append("CLAUDE_CODE_NO_FLICKER=1")
         env.append("ATELIO_SESSION=\(name)")
@@ -76,122 +74,95 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
             )
         }
         isRunning = true
-        terminalView.startIdleMonitor()
     }
 
     // MARK: - 就緒等待
 
-    /// 等待就緒（畫面穩定 + process 存活）
+    /// 等待就緒（簡單輪詢畫面穩定 + process 存活，不走 coordinator）
     func waitForReady(timeout: Int = 5, completion: @escaping (Bool) -> Void) {
-        terminalView.startCapture(timeout: timeout, requireScreenChange: false) { [weak self] _, completed in
-            // 確認 process 仍然存活
-            let alive = self?.terminalView.process?.running ?? false
-            if !alive {
-                self?.isRunning = false
+        let deadline = Date().addingTimeInterval(TimeInterval(timeout))
+        var lastHash = ""
+        var stableSince: Date?
+
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + .milliseconds(200), repeating: .milliseconds(200))
+        timer.setEventHandler { [weak self] in
+            guard let self = self else { timer.cancel(); completion(false); return }
+            let alive = self.terminalView.process?.running ?? false
+            if !alive { self.isRunning = false; timer.cancel(); completion(false); return }
+
+            let terminal = self.terminalView.getTerminal()
+            var lines: [String] = []
+            for row in 0..<terminal.rows {
+                if let line = terminal.getLine(row: row) {
+                    lines.append(line.translateToString(trimRight: true))
+                }
             }
-            completion(completed && alive)
+            let hash = "\(lines.joined(separator: "\n").hashValue)"
+            if hash != lastHash {
+                lastHash = hash
+                stableSince = Date()
+            } else if let start = stableSince, Date().timeIntervalSince(start) >= 2.0 {
+                timer.cancel()
+                completion(true)
+                return
+            }
+            if Date() >= deadline { timer.cancel(); completion(false) }
         }
+        timer.resume()
     }
 
-    // MARK: - 指令派發
+    // MARK: - 指令派發（新 API）
 
-    /// 送出文字到終端並等待完成
-    ///
-    /// 回傳完整 buffer（含 scrollback），與 wait/screen 一致。
-    func dispatch(text: String, timeout: Int, completion: @escaping (String, Bool) -> Void) {
-        guard isRunning else {
-            completion("", false)
-            return
-        }
-
-        // 清除上一輪的 hook 狀態，避免 late turn_end 污染本輪
-        turnEndReceived = false
-
-        // 開始擷取 + 完成偵測
-        terminalView.startCapture(timeout: timeout) { [weak self] _, completed in
-            guard let self = self else { return }
-            let raw = self.terminalView.readFullBufferWithTranscript()
-            let fullBuffer = self.truncateIfNeeded(TerminalDenoise.clean(raw))
-            completion(fullBuffer, completed)
-        }
-
-        // 先送文字，稍後再送 Enter（\r），避免 TUI 把整段當成 paste 處理
+    /// 開始 dispatch：送文字 + 啟動 turn，回傳 semaphore
+    func startDispatch(text: String) -> DispatchSemaphore? {
+        guard isRunning else { return nil }
+        guard coordinator.phase == .idle else { return nil }
+        let sem = coordinator.beginTurn()
         terminalView.send(txt: text)
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) { [weak self] in
             self?.terminalView.send(txt: "\r")
         }
+        return sem
     }
 
-    /// 畫面是否處於靜止狀態
-    var isScreenIdle: Bool {
-        terminalView.isScreenIdle
+    /// 開始 wait：取得目前 turn 的 semaphore
+    func startWait() -> DispatchSemaphore? {
+        guard isRunning else { return nil }
+        if coordinator.phase == .idle { return nil }
+        return coordinator.waitSemaphore()
     }
+
+    /// 讀取 output（含 transcript + denoise + truncate）
+    func readOutput() -> String {
+        let viewport = readTerminalViewport()
+        // 只在 alt-screen 中才用 transcript，離開 alt-screen 後用 full buffer
+        let inAltScreen = terminalView.getTerminal().isCurrentBufferAlternate
+        if inAltScreen, let transcriptOutput = transcriptAccumulator.readTranscript(viewport: viewport) {
+            return truncateIfNeeded(TerminalDenoise.clean(transcriptOutput))
+        }
+        let raw = String(data: terminalView.getTerminal().getBufferAsData(), encoding: .utf8) ?? ""
+        return truncateIfNeeded(TerminalDenoise.clean(raw))
+    }
+
+    /// 讀取目前終端完整畫面內容（已去噪）
+    func readScreen() -> String { readOutput() }
 
     /// Session 狀態（用於 UI 顯示）
     enum Status: String {
-        case busy       // 畫面在動
-        case idle       // 畫面靜止
-        case unowned    // 呼叫端 process 已結束
-        case exited     // 終端裡的程式結束了
+        case busy
+        case idle
+        case unowned
+        case exited
     }
 
     /// 取得目前 session 狀態（每次查詢時即時計算）
     var status: Status {
         if !isRunning { return .exited }
-        // 檢查 ownerPID 是否還活著（不清除 ownerPID，保持 session 鎖定）
         if let owner = ownerPID, kill(owner, 0) != 0 {
             return .unowned
         }
-        return isScreenIdle ? .idle : .busy
-    }
-
-    /// 讀取目前終端完整畫面內容（含 scrollback buffer，已去噪）
-    func readScreen() -> String {
-        let raw = terminalView.readFullBufferWithTranscript()
-        return truncateIfNeeded(TerminalDenoise.clean(raw))
-    }
-
-    /// 不送文字，只等待畫面穩定
-    ///
-    /// 用統一 timer 維護的 isScreenIdle 判斷。
-    /// 如果已經 idle → 立刻回傳。不是 idle → 輪詢等待直到 idle 或 timeout。
-    func wait(timeout: Int, completion: @escaping (String, Bool) -> Void) {
-        guard isRunning else {
-            completion("", false)
-            return
-        }
-
-        // 已經 idle → 立刻回傳
-        if terminalView.isScreenIdle {
-            let raw = terminalView.readFullBufferWithTranscript()
-            let fullBuffer = truncateIfNeeded(TerminalDenoise.clean(raw))
-            completion(fullBuffer, true)
-            return
-        }
-
-        // 等待 idle：每 200ms 檢查一次
-        let deadline = Date().addingTimeInterval(TimeInterval(timeout))
-        let checkTimer = DispatchSource.makeTimerSource(queue: .main)
-        checkTimer.schedule(deadline: .now() + .milliseconds(200), repeating: .milliseconds(200))
-        checkTimer.setEventHandler { [weak self] in
-            guard let self = self else {
-                checkTimer.cancel()
-                completion("", false)
-                return
-            }
-            if self.terminalView.isScreenIdle {
-                checkTimer.cancel()
-                let raw = self.terminalView.readFullBufferWithTranscript()
-                let fullBuffer = self.truncateIfNeeded(TerminalDenoise.clean(raw))
-                completion(fullBuffer, true)
-            } else if Date() >= deadline {
-                checkTimer.cancel()
-                let raw = self.terminalView.readFullBufferWithTranscript()
-                let fullBuffer = self.truncateIfNeeded(TerminalDenoise.clean(raw))
-                completion(fullBuffer, false)
-            }
-        }
-        checkTimer.resume()
+        return coordinator.phase == .idle ? .idle : .busy
     }
 
     /// 取得 session 狀態資訊
@@ -207,17 +178,14 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         )
     }
 
-    /// 檢查 session 是否忙碌（直接用統一 timer 維護的 idle 狀態）
+    /// 檢查 session 是否忙碌
     func checkBusy(completion: @escaping (Bool) -> Void) {
-        completion(!terminalView.isScreenIdle)
+        completion(coordinator.phase != .idle)
     }
 
     /// 關閉 session（直接關閉，不檢查狀態）
     func forceClose() {
-        stopPostTurnMonitor()
-        terminalView.stopCapture()
-        terminalView.stopIdleMonitor()
-        terminalView.resetTranscript()
+        coordinator.handleProcessExit()
         terminalView.process?.terminate()
         isRunning = false
         pendingCloseKey = nil
@@ -237,27 +205,36 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         return true
     }
 
-    // MARK: - 輸出擷取（snapshot diff）
+    // MARK: - 輸出
 
     /// 輸出大小上限（256KB）
     private let maxOutputBytes = 256 * 1024
+
+    /// 讀取 viewport（目前可見畫面）
+    private func readTerminalViewport() -> String {
+        let terminal = terminalView.getTerminal()
+        var lines: [String] = []
+        for row in 0..<terminal.rows {
+            if let line = terminal.getLine(row: row) {
+                lines.append(line.translateToString(trimRight: true))
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
 
     /// 截斷過大的輸出，保留尾端，切在 UTF-8 安全的行邊界
     private func truncateIfNeeded(_ text: String) -> String {
         let totalBytes = text.utf8.count
         guard totalBytes > maxOutputBytes else { return text }
 
-        // 從尾端取 maxOutputBytes，用 Data 轉換確保 UTF-8 安全
         let utf8Data = Data(text.utf8)
         var start = utf8Data.count - maxOutputBytes
-        // 往前退到 UTF-8 字元邊界（UTF-8 continuation byte 開頭是 10xxxxxx）
         while start < utf8Data.count && start > 0 && (utf8Data[start] & 0xC0) == 0x80 {
             start += 1
         }
         guard let tailString = String(data: utf8Data[start...], encoding: .utf8) else {
-            // 最壞情況：多切一些確保能轉成 String
             let safeStart = min(start + 4, utf8Data.count)
-            var tail = String(data: utf8Data[safeStart...], encoding: .utf8) ?? String(text.suffix(maxOutputBytes / 4))
+            let tail = String(data: utf8Data[safeStart...], encoding: .utf8) ?? String(text.suffix(maxOutputBytes / 4))
             return "[截斷：原始 \(totalBytes) bytes]\n" + tail
         }
         var tail = tailString
@@ -267,12 +244,12 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         return "[截斷：原始 \(totalBytes) bytes，保留最後 \(tail.utf8.count) bytes]\n" + tail
     }
 
-
     // MARK: - LocalProcessTerminalViewDelegate
 
     func processTerminated(source: TerminalView, exitCode: Int32?) {
         DispatchQueue.main.async { [weak self] in
             self?.isRunning = false
+            self?.coordinator.handleProcessExit()
         }
     }
 
@@ -282,83 +259,13 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
 
-    // MARK: - Hook 觀察（turn_end 後畫面變化記錄）
+    // MARK: - Hook 事件轉發
 
     func handleTurnStart() {
-        turnActive = true
-        appendHookLog("turn_start")
-        // 標記為非 idle，避免 wait() fast path 提前回傳
-        terminalView.isScreenIdle = false
-        // 動態調整穩定門檻：hash 降級為 60 秒 fallback
-        terminalView.stabilityThreshold = 60
-        startPostTurnMonitor()
+        coordinator.handleHookStart()
     }
 
     func handleTurnEnd() {
-        turnActive = false
-        turnEndReceived = true
-        appendHookLog("turn_end")
-        // drain 模式：1 秒穩定就完成
-        terminalView.stabilityThreshold = 1
-        // 重置穩定計時，讓 drain 從現在開始算
-        terminalView.stableStartTime = Date()
-
-        // 如果 dispatch 已回傳（不在 capture 中），記錄 late end
-        if !terminalView.isCapturing {
-            appendHookLog("fallback_late_end")
-        }
-    }
-
-    /// capture 結束後重置 hook 狀態
-    func resetAfterCapture() {
-        turnActive = false
-        turnEndReceived = false
-        terminalView.stabilityThreshold = 5
-    }
-
-    private func startPostTurnMonitor() {
-        stopPostTurnMonitor()
-        postTurnLastHash = terminalView.stableHash(terminalView.readTerminalBuffer())
-        let timer = DispatchSource.makeTimerSource(queue: .main)
-        timer.schedule(deadline: .now() + .milliseconds(100), repeating: .milliseconds(100))
-        timer.setEventHandler { [weak self] in
-            self?.checkPostTurnScreen()
-        }
-        timer.resume()
-        postTurnMonitorTimer = timer
-    }
-
-    private func stopPostTurnMonitor() {
-        postTurnMonitorTimer?.cancel()
-        postTurnMonitorTimer = nil
-    }
-
-    private func checkPostTurnScreen() {
-        let screen = terminalView.readTerminalBuffer()
-        let hash = terminalView.stableHash(screen)
-        if hash != postTurnLastHash {
-            postTurnLastHash = hash
-            appendHookLog("screen_changed")
-        }
-    }
-
-    private static let hookLogFormatter: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
-
-    func appendHookLog(_ event: String) {
-        let logDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".atelio")
-        try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
-        let logFile = logDir.appendingPathComponent("hook.log")
-        let line = "\(Self.hookLogFormatter.string(from: Date())) session=\(name) event=\(event)\n"
-        if let handle = try? FileHandle(forWritingTo: logFile) {
-            handle.seekToEndOfFile()
-            handle.write(line.data(using: .utf8)!)
-            handle.closeFile()
-        } else {
-            try? line.write(to: logFile, atomically: true, encoding: .utf8)
-        }
+        coordinator.handleHookEnd()
     }
 }

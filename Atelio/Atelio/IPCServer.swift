@@ -170,12 +170,10 @@ class IPCServer {
     }
 
     /// 驗證 callerPID 是否有權操作 session（dispatch/close/wait 共用）
-    /// 回傳 nil 表示通過，否則回傳 IPCResponse
     private func verifyOwner(session: TerminalSession, callerPID: Int32?, command: String) -> IPCResponse? {
         guard let callerPID = callerPID else { return nil }
         if let owner = session.ownerPID {
             if kill(owner, 0) != 0 {
-                // owner 已死 → session 鎖定
                 return IPCResult.response(IPCResult.ownerMismatch, IPCResult.ownerMismatchHint,
                     message: "此 session 的擁有者已斷開（owner=\(owner)），無法 \(command)")
             } else if owner != callerPID {
@@ -190,9 +188,10 @@ class IPCServer {
         let event = request.text ?? "unknown"
         let sessionName = request.name
 
-        // 找到對應 session 並通知（dispatch 到 main thread，因為 terminal 操作必須在 main thread）
         DispatchQueue.main.async { [weak self] in
-            guard let session = self?.manager.sessions[sessionName] else { return }
+            guard let session = self?.manager.sessions[sessionName] else {
+                return
+            }
             switch event {
             case "turn_start": session.handleTurnStart()
             case "turn_end": session.handleTurnEnd()
@@ -243,63 +242,68 @@ class IPCServer {
     }
 
     private func handleDispatch(_ request: IPCRequest) -> IPCResponse {
-        guard let text = request.text else {
-            return IPCResult.response(IPCResult.invalidRequest, IPCResult.invalidRequestHint, message: "缺少 text 參數")
-        }
+        let text = request.text ?? ""
         let timeout = request.timeout ?? 60
-        let semaphore = DispatchSemaphore(value: 0)
         var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
+        var jobSem: DispatchSemaphore?
+        let setupSem = DispatchSemaphore(value: 0)
 
+        // Step 1: main thread 設定 + 啟動 job
         DispatchQueue.main.async { [weak self] in
-            guard let self = self else {
-                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
-                semaphore.signal()
-                return
+            guard let self, let session = self.manager.sessions[request.name] else {
+                response = IPCResult.response(IPCResult.sessionNotFound, IPCResult.sessionNotFoundHint, message: "找不到 session '\(request.name)'")
+                setupSem.signal(); return
             }
-            do {
-                // PPID owner 驗證
-                if let session = self.manager.sessions[request.name],
-                   let ownerError = self.verifyOwner(session: session, callerPID: request.callerPID, command: "dispatch") {
-                    response = ownerError
-                    semaphore.signal()
-                    return
-                }
-
-                let session = self.manager.sessions[request.name]
-                try self.manager.dispatch(name: request.name, text: text, timeout: timeout) { output, completed in
-                    if completed {
-                        if session?.turnEndReceived == true {
-                            response = IPCResult.response(IPCResult.hookTurnEnded, IPCResult.hookTurnEndedHint, output: output)
-                        } else {
-                            if session?.turnActive == true {
-                                // hook session + hash 穩定觸發（fallback）
-                                session?.appendHookLog("fallback_triggered")
-                            }
-                            response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
-                        }
-                    } else {
-                        if session?.turnActive == true {
-                            // AI 還在工作，不帶 output 省 token
-                            response = IPCResult.response(IPCResult.turnInProgress, IPCResult.turnInProgressHint)
-                        } else {
-                            response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, output: output)
-                        }
-                    }
-                    session?.resetAfterCapture()
-                    semaphore.signal()
-                }
-            } catch {
-                // ManagerError 轉成對應的 result
-                let r = Self.mapManagerError(error)
-                response = r
-                semaphore.signal()
+            guard session.isRunning else {
+                response = IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint, message: "session 已停止")
+                setupSem.signal(); return
             }
+            if let err = self.verifyOwner(session: session, callerPID: request.callerPID, command: "dispatch") {
+                response = err; setupSem.signal(); return
+            }
+            guard let sem = session.startDispatch(text: text) else {
+                response = IPCResult.response(IPCResult.turnInProgress, IPCResult.turnInProgressHint)
+                setupSem.signal(); return
+            }
+            jobSem = sem
+            setupSem.signal()
         }
 
-        let waitResult = semaphore.wait(timeout: .now() + .seconds(timeout + 10))
-        if waitResult == .timedOut {
-            response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "IPC 超時（server callback 未回傳）")
+        // Step 2: 等 setup
+        setupSem.wait()
+        guard let sem = jobSem else { return response }
+
+        // Step 3: 等 job（IPC thread 阻塞）
+        let waitResult = sem.wait(timeout: .now() + .seconds(timeout))
+
+        // Step 4: main thread 讀結果
+        let resultSem = DispatchSemaphore(value: 0)
+        DispatchQueue.main.async { [weak self] in
+            guard let session = self?.manager.sessions[request.name] else {
+                response = IPCResult.response(IPCResult.sessionNotFound, IPCResult.sessionNotFoundHint)
+                resultSem.signal(); return
+            }
+            if waitResult == .success {
+                let output = session.readOutput()
+                switch session.coordinator.completionReason {
+                case .hookTurnEnded:
+                    response = IPCResult.response(IPCResult.hookTurnEnded, IPCResult.hookTurnEndedHint, output: output)
+                case .processExited:
+                    response = IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint, output: output)
+                default:
+                    response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
+                }
+            } else {
+                if session.coordinator.hookSeen {
+                    response = IPCResult.response(IPCResult.turnInProgress, IPCResult.turnInProgressHint)
+                } else {
+                    let output = session.readOutput()
+                    response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, output: output)
+                }
+            }
+            resultSem.signal()
         }
+        resultSem.wait()
         return response
     }
 
@@ -383,55 +387,73 @@ class IPCServer {
 
     private func handleWait(_ request: IPCRequest) -> IPCResponse {
         let timeout = request.timeout ?? 60
-        let semaphore = DispatchSemaphore(value: 0)
         var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
+        var jobSem: DispatchSemaphore?
+        let setupSem = DispatchSemaphore(value: 0)
 
+        // Step 1: main thread 設定
         DispatchQueue.main.async { [weak self] in
-            guard let self = self else {
-                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
-                semaphore.signal()
-                return
+            guard let self, let session = self.manager.sessions[request.name] else {
+                response = IPCResult.response(IPCResult.sessionNotFound, IPCResult.sessionNotFoundHint, message: "找不到 session '\(request.name)'")
+                setupSem.signal(); return
             }
-            do {
-                // PPID owner 驗證
-                if let session = self.manager.sessions[request.name],
-                   let ownerError = self.verifyOwner(session: session, callerPID: request.callerPID, command: "wait") {
-                    response = ownerError
-                    semaphore.signal()
-                    return
-                }
-
-                let session = self.manager.sessions[request.name]
-                try self.manager.wait(name: request.name, timeout: timeout) { output, completed in
-                    if completed {
-                        if session?.turnEndReceived == true {
-                            response = IPCResult.response(IPCResult.hookTurnEnded, IPCResult.hookTurnEndedHint, output: output)
-                        } else {
-                            if session?.turnActive == true {
-                                session?.appendHookLog("fallback_triggered")
-                            }
-                            response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
-                        }
-                    } else {
-                        if session?.turnActive == true {
-                            response = IPCResult.response(IPCResult.turnInProgress, IPCResult.turnInProgressHint)
-                        } else {
-                            response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, output: output)
-                        }
-                    }
-                    session?.resetAfterCapture()
-                    semaphore.signal()
-                }
-            } catch {
-                response = Self.mapManagerError(error)
-                semaphore.signal()
+            guard session.isRunning else {
+                response = IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint, message: "session 已停止")
+                setupSem.signal(); return
             }
+            if let err = self.verifyOwner(session: session, callerPID: request.callerPID, command: "wait") {
+                response = err; setupSem.signal(); return
+            }
+            // phase == .idle → 立刻回畫面
+            if session.coordinator.phase == .idle {
+                let output = session.readOutput()
+                response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
+                setupSem.signal(); return
+            }
+            guard let sem = session.startWait() else {
+                let output = session.readOutput()
+                response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
+                setupSem.signal(); return
+            }
+            jobSem = sem
+            setupSem.signal()
         }
 
-        let waitResult = semaphore.wait(timeout: .now() + .seconds(timeout + 10))
-        if waitResult == .timedOut {
-            response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "IPC 超時（server callback 未回傳）")
+        // Step 2: 等 setup
+        setupSem.wait()
+        guard let sem = jobSem else { return response }
+
+        // Step 3: 等 job（IPC thread 阻塞）
+        let waitResult = sem.wait(timeout: .now() + .seconds(timeout))
+
+        // Step 4: main thread 讀結果
+        let resultSem = DispatchSemaphore(value: 0)
+        DispatchQueue.main.async { [weak self] in
+            guard let session = self?.manager.sessions[request.name] else {
+                response = IPCResult.response(IPCResult.sessionNotFound, IPCResult.sessionNotFoundHint)
+                resultSem.signal(); return
+            }
+            if waitResult == .success {
+                let output = session.readOutput()
+                switch session.coordinator.completionReason {
+                case .hookTurnEnded:
+                    response = IPCResult.response(IPCResult.hookTurnEnded, IPCResult.hookTurnEndedHint, output: output)
+                case .processExited:
+                    response = IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint, output: output)
+                default:
+                    response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
+                }
+            } else {
+                if session.coordinator.hookSeen {
+                    response = IPCResult.response(IPCResult.turnInProgress, IPCResult.turnInProgressHint)
+                } else {
+                    let output = session.readOutput()
+                    response = IPCResult.response(IPCResult.deadlineReached, IPCResult.deadlineReachedHint, output: output)
+                }
+            }
+            resultSem.signal()
         }
+        resultSem.wait()
         return response
     }
 
@@ -462,7 +484,6 @@ class IPCServer {
 
     // MARK: - 錯誤轉換
 
-    /// 將 ManagerError 轉成對應的 IPCResponse
     private static func mapManagerError(_ error: Error) -> IPCResponse {
         if let managerError = error as? ManagerError {
             switch managerError {

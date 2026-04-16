@@ -32,34 +32,12 @@ class TerminalManager {
         return session
     }
 
-    /// 對指定 session 派發指令
-    func dispatch(name: String, text: String, timeout: Int, completion: @escaping (String, Bool) -> Void) throws {
-        guard let session = sessions[name] else {
-            throw ManagerError.sessionNotFound(name)
-        }
-        guard session.isRunning else {
-            throw ManagerError.sessionNotRunning(name)
-        }
-        session.dispatch(text: text, timeout: timeout, completion: completion)
-    }
-
     /// 取得指定 session 的狀態
     func status(name: String) throws -> SessionInfo {
         guard let session = sessions[name] else {
             throw ManagerError.sessionNotFound(name)
         }
         return session.sessionInfo()
-    }
-
-    /// 等待指定 session 的畫面穩定（不送文字）
-    func wait(name: String, timeout: Int, completion: @escaping (String, Bool) -> Void) throws {
-        guard let session = sessions[name] else {
-            throw ManagerError.sessionNotFound(name)
-        }
-        guard session.isRunning else {
-            throw ManagerError.sessionNotRunning(name)
-        }
-        session.wait(timeout: timeout, completion: completion)
     }
 
     /// 讀取指定 session 的終端畫面

@@ -6,11 +6,11 @@ struct TerminalViewWrapper: NSViewRepresentable {
 
     let session: TerminalSession
 
-    func makeNSView(context: Context) -> CaptureTerminalView {
+    func makeNSView(context: Context) -> LocalProcessTerminalView {
         return session.terminalView
     }
 
-    func updateNSView(_ nsView: CaptureTerminalView, context: Context) {
+    func updateNSView(_ nsView: LocalProcessTerminalView, context: Context) {
         // 不需要更新，終端 view 自行管理狀態
     }
 }

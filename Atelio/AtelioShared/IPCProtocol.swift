@@ -85,7 +85,7 @@ public enum IPCResult {
     public static let hookTurnEndedHint = "The AI CLI confirmed task completion via hook. The output is the final result — no further wait needed."
 
     public static let turnInProgress = "turn_in_progress"
-    public static let turnInProgressHint = "The AI CLI is still working (confirmed via hook). Use wait to continue waiting for completion. Output is omitted to save tokens."
+    public static let turnInProgressHint = "The session is still working. Use wait to continue waiting for completion, or screen to check current output. Output is omitted to save tokens."
 
     // 非 dispatch/wait 的一般成功
     public static let ok = "ok"
