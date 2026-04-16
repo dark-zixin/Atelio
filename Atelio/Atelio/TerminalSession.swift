@@ -104,6 +104,9 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
             return
         }
 
+        // 清除上一輪的 hook 狀態，避免 late turn_end 污染本輪
+        turnEndReceived = false
+
         // 開始擷取 + 完成偵測
         terminalView.startCapture(timeout: timeout) { [weak self] _, completed in
             guard let self = self else { return }
@@ -284,6 +287,8 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     func handleTurnStart() {
         turnActive = true
         appendHookLog("turn_start")
+        // 標記為非 idle，避免 wait() fast path 提前回傳
+        terminalView.isScreenIdle = false
         // 動態調整穩定門檻：hash 降級為 60 秒 fallback
         terminalView.stabilityThreshold = 60
         startPostTurnMonitor()
@@ -306,6 +311,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     /// capture 結束後重置 hook 狀態
     func resetAfterCapture() {
+        turnActive = false
         turnEndReceived = false
         terminalView.stabilityThreshold = 5
     }

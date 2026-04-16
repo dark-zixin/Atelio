@@ -12,7 +12,7 @@ class CaptureTerminalView: LocalProcessTerminalView {
     private(set) var isCapturing = false
 
     /// 畫面是否處於靜止狀態（穩定超過 stabilityThreshold 秒）
-    private(set) var isScreenIdle = true
+    var isScreenIdle = true
 
     /// 畫面穩定門檻（秒）
     var stabilityThreshold: TimeInterval = 5.0
