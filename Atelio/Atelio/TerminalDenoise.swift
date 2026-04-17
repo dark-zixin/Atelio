@@ -11,7 +11,7 @@ import Foundation
 enum TerminalDenoise {
 
     /// 去噪主入口
-    static func clean(_ text: String) -> String {
+    static func clean(_ text: String, marker: String? = nil) -> String {
         var result = text
 
         // L0 — 位元組正規化
@@ -25,6 +25,9 @@ enum TerminalDenoise {
 
         // L1.4 — status bar 去重（多組只留最後一組）
         result = deduplicateStatusBar(result)
+
+        // L2 — Marker 切片（找到 marker 則砍掉之前的內容）
+        result = sliceByMarker(result, marker: marker)
 
         return result
     }
@@ -248,5 +251,21 @@ enum TerminalDenoise {
         let ratioA = Double(lcsLen) / Double(m)
         let ratioB = Double(lcsLen) / Double(n)
         return min(ratioA, ratioB)
+    }
+
+    // MARK: - L2 Marker 切片
+
+    /// 找到 marker 第一次出現的位置，回傳該行之後的內容
+    /// - marker nil 或空字串 → 原文
+    /// - marker 找不到 → 原文（pass through）
+    /// - marker 在某行 → 回傳該行之後的內容（砍掉 marker 那行及之前）
+    private static func sliceByMarker(_ text: String, marker: String?) -> String {
+        guard let marker = marker, !marker.isEmpty else { return text }
+        guard let range = text.range(of: marker) else { return text }
+        let afterMarker = text[range.upperBound...]
+        if let nextLineStart = afterMarker.firstIndex(of: "\n") {
+            return String(afterMarker[afterMarker.index(after: nextLineStart)...])
+        }
+        return ""
     }
 }

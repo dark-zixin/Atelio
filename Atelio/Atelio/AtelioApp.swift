@@ -10,6 +10,10 @@ struct AtelioApp: App {
         // 不處理的話會直接殺掉 App。忽略後 write 回傳 -1 + EPIPE，
         // 由 IPCFraming.writeMessage 的錯誤處理接住。
         signal(SIGPIPE, SIG_IGN)
+
+        // 載入全域設定（AI CLI 白名單等）。必須在 TerminalManager / IPCServer
+        // 使用前完成，以便後續 session init 時能正確判斷是否啟用 marker。
+        AtelioConfig.load()
     }
 
     var body: some Scene {

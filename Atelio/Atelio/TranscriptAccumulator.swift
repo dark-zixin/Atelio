@@ -24,8 +24,14 @@ class TranscriptAccumulator {
         let currRows = screen.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         let currentSize = terminalSize
 
+        let currFirst3 = currRows.prefix(3).map { normalizeLine($0) }.joined(separator: "|")
+
         guard let prev = prevFrameRows else {
             // 第一幀 → 記錄，不做其他事
+            AtelioConfig.debugLog("ta_first_frame", [
+                "rows": currRows.count,
+                "first3": currFirst3.prefix(120)
+            ])
             prevFrameRows = currRows
             prevFrameSize = currentSize
             return
@@ -34,6 +40,11 @@ class TranscriptAccumulator {
         // 偵測 resize
         if let prevSize = prevFrameSize,
            (prevSize.cols != currentSize.cols || prevSize.rows != currentSize.rows) {
+            AtelioConfig.debugLog("ta_resize_detected", [
+                "prevSize": "\(prevSize.cols)x\(prevSize.rows)",
+                "currSize": "\(currentSize.cols)x\(currentSize.rows)",
+                "appendedPrev": prev.count
+            ])
             appendToTranscript(prev)
             appendGapMarker()
             prevFrameRows = currRows
@@ -45,18 +56,37 @@ class TranscriptAccumulator {
         let prevTopLines = prev.prefix(3).map { normalizeLine($0) }
         let currTopLines = currRows.prefix(3).map { normalizeLine($0) }
         if prevTopLines == currTopLines {
+            AtelioConfig.debugLog("ta_fast_path_skip", [
+                "first3": currFirst3.prefix(120),
+                "transcriptSize": transcript.count
+            ])
             prevFrameRows = currRows
             prevFrameSize = currentSize
             return
         }
 
         // 頂部變了 → 做 suffix-prefix overlap
+        AtelioConfig.debugLog("ta_top_changed", [
+            "prevFirst3": prevTopLines.joined(separator: "|").prefix(120),
+            "currFirst3": currFirst3.prefix(120)
+        ])
         let (departed, overlapFound) = findDepartedLines(prev: prev, curr: currRows)
 
+        let meaningful = departed.filter { !normalizeLine($0).isEmpty }
+        AtelioConfig.debugLog("ta_departed_calculated", [
+            "departedCount": departed.count,
+            "meaningfulCount": meaningful.count,
+            "overlapFound": overlapFound,
+            "firstDepartedLine": departed.first.map { String($0.prefix(80)) } ?? "nil"
+        ])
+
         if !departed.isEmpty {
-            let meaningful = departed.filter { !normalizeLine($0).isEmpty }
             if !meaningful.isEmpty {
                 appendToTranscript(departed)
+                AtelioConfig.debugLog("ta_appended", [
+                    "appendedCount": departed.count,
+                    "transcriptSize": transcript.count
+                ])
             }
             if !overlapFound {
                 appendGapMarker()

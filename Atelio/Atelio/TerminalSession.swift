@@ -32,6 +32,9 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     /// 擁有者的 PPID（第一次 dispatch 時記錄，用於防止不同 AI 操作同一 session）
     var ownerPID: Int32?
 
+    /// 是否啟用 turn marker 注入（根據 cmd 白名單判斷，init 時決定）
+    let markerEnabled: Bool
+
     // MARK: - 初始化
 
     private static let dateFormatter: DateFormatter = {
@@ -41,6 +44,11 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     }()
 
     init(name: String, purpose: String, directory: String, command: String) {
+        AtelioConfig.debugLog("session_init_start", [
+            "name": name,
+            "command": command,
+            "directory": directory
+        ])
         self.name = name
         self.purpose = purpose
         self.createdAt = Date()
@@ -48,6 +56,11 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         self.terminalView = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
         self.transcriptAccumulator = TranscriptAccumulator()
         self.coordinator = TurnCoordinator(terminalView: terminalView, transcriptAccumulator: transcriptAccumulator)
+        self.markerEnabled = AtelioConfig.shouldEnableMarker(for: command)
+        AtelioConfig.debugLog("session_marker_enabled", [
+            "name": name,
+            "markerEnabled": self.markerEnabled
+        ])
 
         super.init()
 
@@ -55,25 +68,49 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
         // 啟動 process
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
+        // SwiftTerm 的預設 PATH 只有 /bin:/usr/bin:/usr/ucb:/usr/local/bin，
+        // 找不到 homebrew / nvm / ~/.local/bin 等位置的 AI CLI。
+        // 覆蓋為 Atelio App process 的 PATH，讓子 process 能找到實際安裝的指令。
+        if let parentPath = ProcessInfo.processInfo.environment["PATH"] {
+            env.removeAll { $0.hasPrefix("PATH=") }
+            env.append("PATH=\(parentPath)")
+            AtelioConfig.debugLog("path_overridden", ["path": parentPath])
+        } else {
+            AtelioConfig.debugLog("path_not_overridden", [:])
+        }
         env.append("CLAUDE_CODE_NO_FLICKER=1")
         env.append("ATELIO_SESSION=\(name)")
         env.append("ATELIO_SOCKET=/tmp/atelio.sock")
 
         if !directory.isEmpty {
             let escapedDir = directory.replacingOccurrences(of: "'", with: "'\\''")
+            let argString = "[-c, cd '\(escapedDir)' && \(command)]"
+            AtelioConfig.debugLog("session_about_to_startprocess", [
+                "name": name,
+                "exe": "/bin/zsh",
+                "args": argString
+            ])
             terminalView.startProcess(
                 executable: "/bin/zsh",
                 args: ["-c", "cd '\(escapedDir)' && \(command)"],
                 environment: env
             )
         } else {
+            let argString = "[-c, \(command)]"
+            AtelioConfig.debugLog("session_about_to_startprocess", [
+                "name": name,
+                "exe": "/bin/zsh",
+                "args": argString
+            ])
             terminalView.startProcess(
                 executable: "/bin/zsh",
                 args: ["-c", command],
                 environment: env
             )
         }
+        AtelioConfig.debugLog("session_startprocess_called", ["name": name])
         isRunning = true
+        AtelioConfig.debugLog("session_init_done", ["name": name])
     }
 
     // MARK: - 就緒等待
@@ -116,13 +153,33 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     /// 開始 dispatch：送文字 + 啟動 turn，回傳 semaphore
     func startDispatch(text: String) -> DispatchSemaphore? {
+        AtelioConfig.debugLog("dispatch_start", [
+            "name": name,
+            "text": text,
+            "markerEnabled": markerEnabled
+        ])
         guard isRunning else { return nil }
         guard coordinator.phase == .idle else { return nil }
         let sem = coordinator.beginTurn()
-        terminalView.send(txt: text)
+        let payload: String
+        if markerEnabled, let marker = coordinator.currentMarker {
+            payload = "\(marker)\n\(text)"
+        } else {
+            payload = text
+        }
+        // Bracketed paste mode 包裝：讓 AI CLI 把 input 當 paste 處理，
+        // 避免 `!` 等字元觸發熱鍵（例如 Gemini 會把 `!` 當 shell mode trigger）
+        let wrapped = "\u{001B}[200~\(payload)\u{001B}[201~"
+        AtelioConfig.debugLog("dispatch_payload", [
+            "name": name,
+            "marker": (coordinator.currentMarker ?? "nil"),
+            "payload": payload
+        ])
+        terminalView.send(txt: wrapped)
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) { [weak self] in
             self?.terminalView.send(txt: "\r")
         }
+        AtelioConfig.debugLog("dispatch_sent", ["name": name])
         return sem
     }
 
@@ -133,20 +190,41 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         return coordinator.waitSemaphore()
     }
 
-    /// 讀取 output（含 transcript + denoise + truncate）
-    func readOutput() -> String {
+    /// 讀取 output（內部核心邏輯）
+    /// - applyMarker: true 時套用 marker 切片（dispatch/wait 用），false 時整頁（screen 用）
+    private func readRaw(applyMarker: Bool) -> String {
+        AtelioConfig.debugLog("read_raw", [
+            "name": name,
+            "applyMarker": applyMarker,
+            "markerEnabled": markerEnabled
+        ])
         let viewport = readTerminalViewport()
+        let marker = (applyMarker && markerEnabled) ? coordinator.currentMarker : nil
+        AtelioConfig.debugLog("read_marker_decided", [
+            "name": name,
+            "marker": (marker ?? "nil")
+        ])
         // 只在 alt-screen 中才用 transcript，離開 alt-screen 後用 full buffer
         let inAltScreen = terminalView.getTerminal().isCurrentBufferAlternate
+        let result: String
         if inAltScreen, let transcriptOutput = transcriptAccumulator.readTranscript(viewport: viewport) {
-            return truncateIfNeeded(TerminalDenoise.clean(transcriptOutput))
+            result = truncateIfNeeded(TerminalDenoise.clean(transcriptOutput, marker: marker))
+        } else {
+            let raw = String(data: terminalView.getTerminal().getBufferAsData(), encoding: .utf8) ?? ""
+            result = truncateIfNeeded(TerminalDenoise.clean(raw, marker: marker))
         }
-        let raw = String(data: terminalView.getTerminal().getBufferAsData(), encoding: .utf8) ?? ""
-        return truncateIfNeeded(TerminalDenoise.clean(raw))
+        AtelioConfig.debugLog("read_done", [
+            "name": name,
+            "outputSize": result.count
+        ])
+        return result
     }
 
-    /// 讀取目前終端完整畫面內容（已去噪）
-    func readScreen() -> String { readOutput() }
+    /// dispatch/wait 用：套用 marker 切片（如果 session 啟用）
+    func readOutput() -> String { readRaw(applyMarker: true) }
+
+    /// screen 用：永遠整頁，不切片
+    func readScreen() -> String { readRaw(applyMarker: false) }
 
     /// Session 狀態（用於 UI 顯示）
     enum Status: String {
@@ -247,6 +325,10 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     // MARK: - LocalProcessTerminalViewDelegate
 
     func processTerminated(source: TerminalView, exitCode: Int32?) {
+        AtelioConfig.debugLog("session_process_terminated", [
+            "name": self.name,
+            "exitCode": exitCode ?? -999
+        ])
         DispatchQueue.main.async { [weak self] in
             self?.isRunning = false
             self?.coordinator.handleProcessExit()

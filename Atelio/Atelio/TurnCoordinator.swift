@@ -31,6 +31,8 @@ class TurnCoordinator {
     private var timerIntervalMs = 200
     private var completionSemaphore: DispatchSemaphore?
     private var wasInAltScreen = false
+    private var turnCounter: Int = 0
+    private(set) var currentMarker: String?
 
     // MARK: - 初始化
 
@@ -44,6 +46,8 @@ class TurnCoordinator {
     /// 開始新 turn，回傳 semaphore 給呼叫端等待
     func beginTurn() -> DispatchSemaphore {
         stopTimer()
+        turnCounter += 1
+        currentMarker = "<!-- ATELIO-T-\(turnCounter) -->"
         phase = .working
         hookSeen = false
         completed = false
@@ -57,7 +61,7 @@ class TurnCoordinator {
         let sem = DispatchSemaphore(value: 0)
         completionSemaphore = sem
         startTimer(intervalMs: 200)
-        appendLog("beginTurn preHash=\(preDispatchHash.prefix(16))")
+        appendLog("beginTurn preHash=\(preDispatchHash.prefix(16)) marker=T-\(turnCounter)")
         return sem
     }
 
