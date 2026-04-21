@@ -161,7 +161,7 @@ enum AtelioConfig {
     static func matchAiCli(argv: [String]) -> String? {
         for token in argv {
             let base = (token as NSString).lastPathComponent
-            if aiCliWhitelist.contains(base) {
+            if isInWhitelist(base) {
                 return base
             }
         }

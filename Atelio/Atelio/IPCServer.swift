@@ -191,7 +191,6 @@ class IPCServer {
                 semaphore.signal(); return
             }
 
-            let shellPid = session.terminalView.process?.shellPid ?? 0
             let childfd = session.terminalView.process?.childfd ?? -1
 
             // peek foreground process group
@@ -202,7 +201,7 @@ class IPCServer {
                 if fgPgrp < 0 { tcErrno = errno }
             }
 
-            // 從 pgrp 拿 name / path（pgrp leader pid == pgrp 本身）
+            // proc_name / proc_pidpath（對比用 raw data，不做判斷；pgrp leader pid == pgrp 本身）
             var fgName = ""
             var fgPath = ""
             if fgPgrp > 0 {
@@ -215,27 +214,32 @@ class IPCServer {
                 if pathLen > 0 { fgPath = String(cString: pathBuf) }
             }
 
-            let inWhitelist = !fgName.isEmpty && AtelioConfig.isInWhitelist(fgName)
-
-            // 新增：argv 掃描（KERN_PROCARGS2）
+            // argv 掃描（KERN_PROCARGS2）— 權威判斷
             var argv: [String] = []
-            var argvHit: String = ""
             if fgPgrp > 0, let fetched = ProcessInspector.argv(for: pid_t(fgPgrp)) {
                 argv = fetched
-                argvHit = AtelioConfig.matchAiCli(argv: fetched) ?? ""
+            }
+            let argvHit: Any = AtelioConfig.matchAiCli(argv: argv) ?? NSNull()
+
+            // 統合失敗原因為 error 字串（null = 成功）
+            let errorValue: Any
+            if childfd < 0 {
+                errorValue = "no_childfd"
+            } else if fgPgrp < 0 {
+                errorValue = "tcgetpgrp_fail (errno=\(tcErrno))"
+            } else if argv.isEmpty {
+                errorValue = "argv_unavailable"
+            } else {
+                errorValue = NSNull()
             }
 
             let payload: [String: Any] = [
                 "session": request.name,
-                "shell_pid": shellPid,
-                "childfd": childfd,
-                "fg_pgrp": fgPgrp,
+                "argv": argv,
+                "argv_hit": argvHit,
                 "fg_name": fgName,
                 "fg_path": fgPath,
-                "in_whitelist": inWhitelist,
-                "tcgetpgrp_errno": tcErrno,
-                "argv": argv,
-                "argv_hit": argvHit
+                "error": errorValue
             ]
             let data = (try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])) ?? Data()
             let json = String(data: data, encoding: .utf8) ?? "{}"
