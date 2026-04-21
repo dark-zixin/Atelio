@@ -8,8 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		201761B72D2C04C33A824249 /* PreviewContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 874A9BDB0C62E94092277637 /* PreviewContentView.swift */; };
-		2061D5CA5C0D77C3F3BB1817 /* TitleBarSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F52EA62B0B839ABBFAE9D4A /* TitleBarSnapshotTests.swift */; };
-		2D4F1AEDD888EA082FFDD3EE /* WorkspacePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFCFBFCA470963698C713C6D /* WorkspacePreviewView.swift */; };
 		3040648AAF6153F964D659D5 /* LayoutSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27255914750C667606CEA5AC /* LayoutSnapshotTests.swift */; };
 		42A0EC492F8ADDA9004D2C0C /* AtelioShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; };
 		42A0EC4A2F8ADDA9004D2C0C /* AtelioShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -20,14 +18,12 @@
 		460181AEC02B321DDCEDBFF0 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3E1F98A78C0D4E0261CB8AC2 /* Cocoa.framework */; };
 		68B2CA1C0A46EC01153EF054 /* WindowState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C14E902DB322536CFE759ADF /* WindowState.swift */; };
 		6A6F78D9C30EFD5B04980666 /* LayoutPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FB43D18B837B9BAB1BF9AE /* LayoutPickerView.swift */; };
-		72E92EE512B17BE855B4DAF5 /* MinimizedBarSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA3A55F697EE90D81837CF22 /* MinimizedBarSnapshotTests.swift */; };
 		8BF61478F531FE82404ACEB4 /* MinimizedBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D4CA9A6966D66487B05139 /* MinimizedBar.swift */; };
 		8F4D008DF868E6E4E555A41E /* AtelioPreviewApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3091D2C701661D7B3F6DA01B /* AtelioPreviewApp.swift */; };
 		A29DE825650FF88FB4B5E98B /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = EA20090965BF6504194E6A25 /* SnapshotTesting */; };
 		ACE8FD995BBF22FF0ED573AA /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3E1F98A78C0D4E0261CB8AC2 /* Cocoa.framework */; };
 		AE790E27C1D7A3F70CBEB3A3 /* FakeTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BBB0438069DBE282359237F /* FakeTerminalView.swift */; };
 		B641034C908C669F6D3E87E4 /* LayoutTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B3C9895DA69D8C723F286F /* LayoutTemplate.swift */; };
-		C9F930C02385E1F30D43B620 /* WorkspaceSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47A6B7715830882BD2873E2D /* WorkspaceSnapshotTests.swift */; };
 		CE64B2B862C47A30C4BDC178 /* SanitySnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB1461FED8B74FCBFF51767C /* SanitySnapshotTests.swift */; };
 		DD6DB0AC5B65D5C000BCB284 /* TerminalTitleBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB95293FE9A2E3C2C7DE4290 /* TerminalTitleBar.swift */; };
 		EE2FF52E2F915CC2D4F910A1 /* LayoutPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CAA1D950C071390240D1A3 /* LayoutPreviewView.swift */; };
@@ -93,7 +89,6 @@
 
 /* Begin PBXFileReference section */
 		0BBB0438069DBE282359237F /* FakeTerminalView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FakeTerminalView.swift; sourceTree = "<group>"; };
-		1F52EA62B0B839ABBFAE9D4A /* TitleBarSnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TitleBarSnapshotTests.swift; sourceTree = "<group>"; };
 		27255914750C667606CEA5AC /* LayoutSnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LayoutSnapshotTests.swift; sourceTree = "<group>"; };
 		28FB43D18B837B9BAB1BF9AE /* LayoutPickerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LayoutPickerView.swift; path = Atelio/LayoutPickerView.swift; sourceTree = SOURCE_ROOT; };
 		3091D2C701661D7B3F6DA01B /* AtelioPreviewApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AtelioPreviewApp.swift; sourceTree = "<group>"; };
@@ -102,16 +97,13 @@
 		42A0EC232F8ADD1B004D2C0C /* Atelio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Atelio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		42A0EC352F8ADD7C004D2C0C /* AtelioCLI */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = AtelioCLI; sourceTree = BUILT_PRODUCTS_DIR; };
 		42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = AtelioShared.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		47A6B7715830882BD2873E2D /* WorkspaceSnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkspaceSnapshotTests.swift; sourceTree = "<group>"; };
 		50CAA1D950C071390240D1A3 /* LayoutPreviewView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LayoutPreviewView.swift; sourceTree = "<group>"; };
 		6548442F10E77594DC0874B0 /* AtelioTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AtelioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		73B3C9895DA69D8C723F286F /* LayoutTemplate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LayoutTemplate.swift; path = Atelio/LayoutTemplate.swift; sourceTree = SOURCE_ROOT; };
 		78D4CA9A6966D66487B05139 /* MinimizedBar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MinimizedBar.swift; path = Atelio/MinimizedBar.swift; sourceTree = SOURCE_ROOT; };
 		874A9BDB0C62E94092277637 /* PreviewContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PreviewContentView.swift; sourceTree = "<group>"; };
-		AFCFBFCA470963698C713C6D /* WorkspacePreviewView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkspacePreviewView.swift; sourceTree = "<group>"; };
 		C14E902DB322536CFE759ADF /* WindowState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WindowState.swift; path = Atelio/WindowState.swift; sourceTree = SOURCE_ROOT; };
 		CB95293FE9A2E3C2C7DE4290 /* TerminalTitleBar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TerminalTitleBar.swift; path = Atelio/TerminalTitleBar.swift; sourceTree = SOURCE_ROOT; };
-		DA3A55F697EE90D81837CF22 /* MinimizedBarSnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MinimizedBarSnapshotTests.swift; sourceTree = "<group>"; };
 		FB1461FED8B74FCBFF51767C /* SanitySnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SanitySnapshotTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -241,10 +233,6 @@
 				0BBB0438069DBE282359237F /* FakeTerminalView.swift */,
 				50CAA1D950C071390240D1A3 /* LayoutPreviewView.swift */,
 				27255914750C667606CEA5AC /* LayoutSnapshotTests.swift */,
-				1F52EA62B0B839ABBFAE9D4A /* TitleBarSnapshotTests.swift */,
-				DA3A55F697EE90D81837CF22 /* MinimizedBarSnapshotTests.swift */,
-				AFCFBFCA470963698C713C6D /* WorkspacePreviewView.swift */,
-				47A6B7715830882BD2873E2D /* WorkspaceSnapshotTests.swift */,
 			);
 			path = AtelioTests;
 			sourceTree = "<group>";
@@ -481,10 +469,6 @@
 				AE790E27C1D7A3F70CBEB3A3 /* FakeTerminalView.swift in Sources */,
 				EE2FF52E2F915CC2D4F910A1 /* LayoutPreviewView.swift in Sources */,
 				3040648AAF6153F964D659D5 /* LayoutSnapshotTests.swift in Sources */,
-				2061D5CA5C0D77C3F3BB1817 /* TitleBarSnapshotTests.swift in Sources */,
-				72E92EE512B17BE855B4DAF5 /* MinimizedBarSnapshotTests.swift in Sources */,
-				2D4F1AEDD888EA082FFDD3EE /* WorkspacePreviewView.swift in Sources */,
-				C9F930C02385E1F30D43B620 /* WorkspaceSnapshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
