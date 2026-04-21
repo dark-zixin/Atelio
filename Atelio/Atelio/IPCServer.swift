@@ -1,5 +1,6 @@
 import Foundation
 import AtelioShared
+import SwiftTerm
 
 /// Unix domain socket server，接收 CLI 指令並路由到 TerminalManager
 class IPCServer {
@@ -168,7 +169,82 @@ class IPCServer {
             return handleList(request)
         case .notify:
             return handleNotify(request)
+        case .peek:
+            return handlePeek(request)
         }
+    }
+
+    /// 讀取 session PTY 的 foreground process group，回傳 basename/path/whitelist 判斷。
+    /// 唯讀診斷用，不改任何 session 狀態。
+    private func handlePeek(_ request: IPCRequest) -> IPCResponse {
+        let semaphore = DispatchSemaphore(value: 0)
+        var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
+                semaphore.signal(); return
+            }
+            guard let session = self.manager.sessions[request.name] else {
+                response = IPCResult.response(IPCResult.sessionNotFound, IPCResult.sessionNotFoundHint,
+                    message: "找不到 session '\(request.name)'")
+                semaphore.signal(); return
+            }
+
+            let shellPid = session.terminalView.process?.shellPid ?? 0
+            let childfd = session.terminalView.process?.childfd ?? -1
+
+            // peek foreground process group
+            var fgPgrp: pid_t = -1
+            var tcErrno: Int32 = 0
+            if childfd >= 0 {
+                fgPgrp = tcgetpgrp(childfd)
+                if fgPgrp < 0 { tcErrno = errno }
+            }
+
+            // 從 pgrp 拿 name / path（pgrp leader pid == pgrp 本身）
+            var fgName = ""
+            var fgPath = ""
+            if fgPgrp > 0 {
+                var nameBuf = [CChar](repeating: 0, count: 256)
+                let nameLen = proc_name(Int32(fgPgrp), &nameBuf, UInt32(nameBuf.count))
+                if nameLen > 0 { fgName = String(cString: nameBuf) }
+
+                var pathBuf = [CChar](repeating: 0, count: Int(PATH_MAX))
+                let pathLen = proc_pidpath(Int32(fgPgrp), &pathBuf, UInt32(pathBuf.count))
+                if pathLen > 0 { fgPath = String(cString: pathBuf) }
+            }
+
+            let inWhitelist = !fgName.isEmpty && AtelioConfig.isInWhitelist(fgName)
+
+            // 新增：argv 掃描（KERN_PROCARGS2）
+            var argv: [String] = []
+            var argvHit: String = ""
+            if fgPgrp > 0, let fetched = ProcessInspector.argv(for: pid_t(fgPgrp)) {
+                argv = fetched
+                argvHit = AtelioConfig.matchAiCli(argv: fetched) ?? ""
+            }
+
+            let payload: [String: Any] = [
+                "session": request.name,
+                "shell_pid": shellPid,
+                "childfd": childfd,
+                "fg_pgrp": fgPgrp,
+                "fg_name": fgName,
+                "fg_path": fgPath,
+                "in_whitelist": inWhitelist,
+                "tcgetpgrp_errno": tcErrno,
+                "argv": argv,
+                "argv_hit": argvHit
+            ]
+            let data = (try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])) ?? Data()
+            let json = String(data: data, encoding: .utf8) ?? "{}"
+            response = IPCResult.response(IPCResult.ok, IPCResult.okHint, output: json)
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+        return response
     }
 
     /// 驗證 callerPID 是否有權操作 session（dispatch/close/wait 共用）

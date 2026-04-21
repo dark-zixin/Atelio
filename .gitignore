@@ -14,8 +14,9 @@ temp_doc/
 build/
 DerivedData/
 *.xcuserstate
-*.xcworkspace/xcuserdata/
-*.xcodeproj/xcuserdata/
+**/*.xcworkspace/xcuserdata/
+**/*.xcodeproj/xcuserdata/
+*.profraw
 
 # Swift Package Manager
 .build/

@@ -44,10 +44,11 @@ class TurnCoordinator {
     // MARK: - Turn 生命週期
 
     /// 開始新 turn，回傳 semaphore 給呼叫端等待
-    func beginTurn() -> DispatchSemaphore {
+    /// - withMarker: 非 AI CLI session（shell 等）傳 false，`currentMarker` 會保持 nil
+    func beginTurn(withMarker: Bool = true) -> DispatchSemaphore {
         stopTimer()
         turnCounter += 1
-        currentMarker = "<!-- ATELIO-T-\(turnCounter) -->"
+        currentMarker = withMarker ? "<!-- ATELIO-T-\(turnCounter) -->" : nil
         phase = .working
         hookSeen = false
         completed = false
@@ -61,7 +62,8 @@ class TurnCoordinator {
         let sem = DispatchSemaphore(value: 0)
         completionSemaphore = sem
         startTimer(intervalMs: 200)
-        appendLog("beginTurn preHash=\(preDispatchHash.prefix(16)) marker=T-\(turnCounter)")
+        let markerDesc = currentMarker ?? "none"
+        appendLog("beginTurn preHash=\(preDispatchHash.prefix(16)) marker=\(markerDesc)")
         return sem
     }
 

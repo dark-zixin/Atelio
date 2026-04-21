@@ -144,30 +144,28 @@ enum AtelioConfig {
         debugLog("config_parse_ok", [:])
     }
 
-    /// 判斷某個 command 是否該啟用 marker
-    /// 規則：取第一個 token 的 basename，查白名單
-    static func shouldEnableMarker(for command: String) -> Bool {
-        debugLog("marker_check", ["command": command])
-        let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            debugLog("marker_check_result", [
-                "command": command,
-                "basename": "",
-                "whitelist_size": aiCliWhitelist.count,
-                "matches": false
-            ])
-            return false
+    /// 判斷 basename 是否在 AI CLI 白名單中（供 foreground process 動態判斷使用）
+    static func isInWhitelist(_ basename: String) -> Bool {
+        return aiCliWhitelist.contains(basename)
+    }
+
+    /// 掃描 argv 陣列判斷是否為 AI CLI session
+    /// 對每個 token 取 basename，任一命中即視為 AI CLI
+    ///
+    /// 已知邊界（刻意的 trade-off）：argv 任一 token basename 精確匹配白名單即 HIT，
+    /// 包括 `less /tmp/codex`、`vim ./claude` 這類「檔名剛好等於白名單字串」的場景。
+    /// 實務上極少發生（檔名通常帶副檔名或大小寫不同，而且 editor/pager 不是主 AI 的
+    /// 對話目標），優先覆蓋主流 AI CLI 啟動模式。
+    ///
+    /// - Returns: 命中的白名單名稱；nil 表示全數 MISS
+    static func matchAiCli(argv: [String]) -> String? {
+        for token in argv {
+            let base = (token as NSString).lastPathComponent
+            if aiCliWhitelist.contains(base) {
+                return base
+            }
         }
-        let firstToken = trimmed.split(separator: " ", maxSplits: 1).first.map(String.init) ?? trimmed
-        let basename = (firstToken as NSString).lastPathComponent
-        let result = aiCliWhitelist.contains(basename)
-        debugLog("marker_check_result", [
-            "command": command,
-            "basename": basename,
-            "whitelist_size": aiCliWhitelist.count,
-            "matches": result
-        ])
-        return result
+        return nil
     }
 
     // MARK: - 字體大小操作

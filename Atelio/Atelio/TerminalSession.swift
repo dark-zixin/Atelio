@@ -32,9 +32,6 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     /// 擁有者的 PPID（第一次 dispatch 時記錄，用於防止不同 AI 操作同一 session）
     var ownerPID: Int32?
 
-    /// 是否啟用 turn marker 注入（根據 cmd 白名單判斷，init 時決定）
-    let markerEnabled: Bool
-
     /// 字體變更通知 observer token（用於 deinit 移除）
     private var fontObserver: NSObjectProtocol?
 
@@ -59,11 +56,6 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         self.terminalView = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
         self.transcriptAccumulator = TranscriptAccumulator()
         self.coordinator = TurnCoordinator(terminalView: terminalView, transcriptAccumulator: transcriptAccumulator)
-        self.markerEnabled = AtelioConfig.shouldEnableMarker(for: command)
-        AtelioConfig.debugLog("session_marker_enabled", [
-            "name": name,
-            "markerEnabled": self.markerEnabled
-        ])
 
         super.init()
 
@@ -184,18 +176,45 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     // MARK: - 指令派發（新 API）
 
+    /// 讀取當前 foreground process 的 argv 並掃描白名單；命中回傳 AI CLI 名稱，否則 nil
+    /// 失敗時分辨原因寫 debug log（排查偶發不切片時有用）
+    private func currentForegroundAiCli() -> String? {
+        guard let fd = terminalView.process?.childfd, fd >= 0 else {
+            AtelioConfig.debugLog("dispatch_peek_fail", ["name": name, "reason": "no_childfd"])
+            return nil
+        }
+        let pgrp = tcgetpgrp(fd)
+        guard pgrp > 0 else {
+            AtelioConfig.debugLog("dispatch_peek_fail", ["name": name, "reason": "tcgetpgrp_fail", "errno": errno])
+            return nil
+        }
+        guard let argv = ProcessInspector.argv(for: pgrp) else {
+            AtelioConfig.debugLog("dispatch_peek_fail", ["name": name, "reason": "argv_unavailable", "pgrp": pgrp])
+            return nil
+        }
+        guard !argv.isEmpty else {
+            AtelioConfig.debugLog("dispatch_peek_fail", ["name": name, "reason": "empty_argv", "pgrp": pgrp])
+            return nil
+        }
+        return AtelioConfig.matchAiCli(argv: argv)
+    }
+
     /// 開始 dispatch：送文字 + 啟動 turn，回傳 semaphore
     func startDispatch(text: String) -> DispatchSemaphore? {
-        AtelioConfig.debugLog("dispatch_start", [
-            "name": name,
-            "text": text,
-            "markerEnabled": markerEnabled
-        ])
         guard isRunning else { return nil }
         guard coordinator.phase == .idle else { return nil }
-        let sem = coordinator.beginTurn()
+
+        // Runtime 動態判斷：peek foreground argv，決定此次是否注入 marker
+        let aiCliHit = currentForegroundAiCli()
+        AtelioConfig.debugLog("dispatch_argv_check", [
+            "name": name,
+            "text": text,
+            "hit": aiCliHit ?? "MISS"
+        ])
+
+        let sem = coordinator.beginTurn(withMarker: aiCliHit != nil)
         let payload: String
-        if markerEnabled, let marker = coordinator.currentMarker {
+        if let marker = coordinator.currentMarker {
             payload = "\(marker)\n\(text)"
         } else {
             payload = text
@@ -225,14 +244,15 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
     /// 讀取 output（內部核心邏輯）
     /// - applyMarker: true 時套用 marker 切片（dispatch/wait 用），false 時整頁（screen 用）
+    ///   實際切片與否取決於 `coordinator.currentMarker` 是否有值（該輪 dispatch 有注入 marker）
     private func readRaw(applyMarker: Bool) -> String {
         AtelioConfig.debugLog("read_raw", [
             "name": name,
             "applyMarker": applyMarker,
-            "markerEnabled": markerEnabled
+            "currentMarker": coordinator.currentMarker ?? "nil"
         ])
         let viewport = readTerminalViewport()
-        let marker = (applyMarker && markerEnabled) ? coordinator.currentMarker : nil
+        let marker = applyMarker ? coordinator.currentMarker : nil
         AtelioConfig.debugLog("read_marker_decided", [
             "name": name,
             "marker": (marker ?? "nil")
@@ -253,7 +273,8 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         return result
     }
 
-    /// dispatch/wait 用：套用 marker 切片（如果 session 啟用）
+    /// dispatch/wait 用：是否真正切片取決於 `coordinator.currentMarker` 是否有值
+    /// （per-dispatch 動態判斷：AI CLI session 注入 marker，shell 為 nil → pass-through 整頁）
     func readOutput() -> String { readRaw(applyMarker: true) }
 
     /// screen 用：永遠整頁，不切片
