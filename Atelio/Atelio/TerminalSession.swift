@@ -35,6 +35,9 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     /// 是否啟用 turn marker 注入（根據 cmd 白名單判斷，init 時決定）
     let markerEnabled: Bool
 
+    /// 字體變更通知 observer token（用於 deinit 移除）
+    private var fontObserver: NSObjectProtocol?
+
     // MARK: - 初始化
 
     private static let dateFormatter: DateFormatter = {
@@ -65,6 +68,21 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         super.init()
 
         terminalView.processDelegate = self
+
+        // 套用目前全域字體大小（SwiftTerm setter 內部會 resetFont + 重算 cell）
+        terminalView.font = Self.makeFont(size: AtelioConfig.fontSize)
+
+        // 訂閱字體大小變更廣播：收到後切到 main queue 套用
+        fontObserver = NotificationCenter.default.addObserver(
+            forName: .atelioFontSizeChanged,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.terminalView.font = Self.makeFont(size: AtelioConfig.fontSize)
+            }
+        }
 
         // 啟動 process
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
@@ -111,6 +129,21 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         AtelioConfig.debugLog("session_startprocess_called", ["name": name])
         isRunning = true
         AtelioConfig.debugLog("session_init_done", ["name": name])
+    }
+
+    deinit {
+        // 移除字體變更 observer，避免 observer 持有失效 session
+        if let token = fontObserver {
+            NotificationCenter.default.removeObserver(token)
+        }
+    }
+
+    // MARK: - 字體
+
+    /// 產生等寬字體：優先 Menlo，失敗 fallback 到系統 monospaced
+    private static func makeFont(size: CGFloat) -> NSFont {
+        return NSFont(name: "Menlo", size: size)
+            ?? NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
     }
 
     // MARK: - 就緒等待

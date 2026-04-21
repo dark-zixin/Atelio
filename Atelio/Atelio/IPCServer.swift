@@ -10,11 +10,13 @@ class IPCServer {
     static var responseLogDir: String? = "/Users/dark/work/macos-apps/atelio/temp_doc/0414_openclaw_denoise_test/raw"
 
     private let manager: TerminalManager
+    private let dispatchActivity: DispatchActivity
     private var serverFd: Int32 = -1
     private var isRunning = false
 
-    init(manager: TerminalManager) {
+    init(manager: TerminalManager, dispatchActivity: DispatchActivity) {
         self.manager = manager
+        self.dispatchActivity = dispatchActivity
     }
 
     // MARK: - 啟動與停止
@@ -248,6 +250,11 @@ class IPCServer {
         var jobSem: DispatchSemaphore?
         let setupSem = DispatchSemaphore(value: 0)
 
+        // Dispatch 活動計數：進入點 +1，所有離開路徑 -1（用 defer 保證）
+        let activity = self.dispatchActivity
+        DispatchQueue.main.async { activity.begin() }
+        defer { DispatchQueue.main.async { activity.end() } }
+
         // Step 1: main thread 設定 + 啟動 job
         DispatchQueue.main.async { [weak self] in
             guard let self, let session = self.manager.sessions[request.name] else {
@@ -390,6 +397,11 @@ class IPCServer {
         var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
         var jobSem: DispatchSemaphore?
         let setupSem = DispatchSemaphore(value: 0)
+
+        // Wait 活動計數：進入點 +1，所有離開路徑 -1（用 defer 保證）
+        let activity = self.dispatchActivity
+        DispatchQueue.main.async { activity.begin() }
+        defer { DispatchQueue.main.async { activity.end() } }
 
         // Step 1: main thread 設定
         DispatchQueue.main.async { [weak self] in
