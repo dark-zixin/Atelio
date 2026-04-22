@@ -5,7 +5,7 @@ import SwiftTerm
 /// Unix domain socket server，接收 CLI 指令並路由到 TerminalManager
 class IPCServer {
 
-    static let socketPath = "/tmp/atelio.sock"
+    static var socketPath: String { AtelioPaths.socketPath }
 
     /// 暫時的回應 logging 目錄（設為 nil 關閉 logging）
     static var responseLogDir: String? = "/Users/dark/work/macos-apps/atelio/temp_doc/0414_openclaw_denoise_test/raw"
@@ -24,8 +24,17 @@ class IPCServer {
 
     /// 啟動 IPC server
     func start() throws {
+        let path = IPCServer.socketPath
+
+        // sockaddr_un.sun_path 在 macOS 為 104 bytes（含 null）。
+        // 目前路徑 ~/.atelio/atelio.sock 在正常使用者名下約 40 字元，遠低於上限；
+        // 一次性 precondition 防未來 root 路徑改長或使用者名異常長時靜默 truncate。
+        let byteCount = path.utf8CString.count
+        precondition(byteCount <= 104,
+                     "IPC socket path 超過 sockaddr_un.sun_path 上限: \(byteCount) bytes, path=\(path)")
+
         // 清除舊的 socket 檔案
-        unlink(IPCServer.socketPath)
+        unlink(path)
 
         // 建立 socket
         serverFd = socket(AF_UNIX, SOCK_STREAM, 0)
@@ -37,7 +46,7 @@ class IPCServer {
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
 
-        let pathBytes = IPCServer.socketPath.utf8CString
+        let pathBytes = path.utf8CString
         withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
             let raw = UnsafeMutableRawPointer(ptr)
             pathBytes.withUnsafeBufferPointer { buf in

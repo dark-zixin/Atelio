@@ -90,7 +90,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         }
         env.append("CLAUDE_CODE_NO_FLICKER=1")
         env.append("ATELIO_SESSION=\(name)")
-        env.append("ATELIO_SOCKET=/tmp/atelio.sock")
+        env.append("ATELIO_SOCKET=\(AtelioPaths.socketPath)")
 
         if !directory.isEmpty {
             let escapedDir = directory.replacingOccurrences(of: "'", with: "'\\''")

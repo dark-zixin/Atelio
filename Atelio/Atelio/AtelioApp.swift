@@ -1,4 +1,5 @@
 import SwiftUI
+import AtelioShared
 
 @main
 struct AtelioApp: App {
@@ -13,6 +14,11 @@ struct AtelioApp: App {
         // 不處理的話會直接殺掉 App。忽略後 write 回傳 -1 + EPIPE，
         // 由 IPCFraming.writeMessage 的錯誤處理接住。
         signal(SIGPIPE, SIG_IGN)
+
+        // Bootstrap：確保 ~/.atelio/ 存在。必須在 AtelioConfig.load() / debugLog /
+        // IPCServer.start 之前，因為後續寫入點皆相信目錄已建立（僅 debugLog
+        // 保留 defensive mkdir 作為 bootstrap 失敗時的保險）。
+        AtelioPaths.ensureRoot()
 
         // 載入全域設定（AI CLI 白名單、字體大小等）。必須在 TerminalManager /
         // IPCServer 使用前完成，以便後續 session init 時能讀到正確的字體大小

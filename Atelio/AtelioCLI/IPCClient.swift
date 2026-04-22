@@ -27,7 +27,7 @@ enum IPCClient {
         var request = request
         request.callerPID = callerIdentity()
 
-        let socketPath = "/tmp/atelio.sock"
+        let socketPath = AtelioPaths.socketPath
 
         // 建立 socket
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftTerm
+import AtelioShared
 
 /// Turn 完成偵測的集中管理器
 ///
@@ -218,9 +219,9 @@ class TurnCoordinator {
     }()
 
     func appendLog(_ event: String) {
-        let logDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".atelio")
-        try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
-        let logFile = logDir.appendingPathComponent("hook.log")
+        // 目錄 `~/.atelio/` 由 `AtelioPaths.ensureRoot()` 在 App 啟動早期建立，
+        // 本函式相信目錄已存在。
+        let logFile = AtelioPaths.hookLogPath
         let line = "\(Self.hookLogFormatter.string(from: Date())) event=\(event) phase=\(phase)\n"
         if let handle = try? FileHandle(forWritingTo: logFile) {
             handle.seekToEndOfFile()

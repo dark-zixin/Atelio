@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import AtelioShared
 
 /// Atelio 全域設定（從 ~/.atelio/config.json 讀取）
 enum AtelioConfig {
@@ -25,17 +26,15 @@ enum AtelioConfig {
     /// 寫入請走 `setFontSize(_:)` / `resetFontSize()`，以確保同步持久化。
     private(set) static var fontSize: CGFloat = fontSizeDefault
 
-    /// Config 檔案路徑
-    private static var configPath: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".atelio")
-            .appendingPathComponent("config.json")
-    }
-
     // MARK: - Debug Log
 
     /// 共用 debug log：寫到 ~/.atelio/debug.log 與 NSLog
     /// 靜默失敗，不拋例外
+    ///
+    /// 保留內嵌 `createDirectory` 作為 defensive：debugLog 可能在
+    /// `AtelioPaths.ensureRoot()` 之前或失敗的情境下被呼叫（例如想記錄
+    /// bootstrap 本身的失敗），必須自帶 mkdir 才能保證合約。其他寫入點
+    /// （config/hook/font persist）統一相信 bootstrap，不再自建目錄。
     static func debugLog(_ event: String, _ data: [String: Any] = [:]) {
         let timestamp = ISO8601DateFormatter().string(from: Date())
         var parts = ["\(timestamp)", "event=\(event)"]
@@ -45,9 +44,8 @@ enum AtelioConfig {
         }
         let line = parts.joined(separator: " ") + "\n"
 
-        let logDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".atelio")
-        try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
-        let logFile = logDir.appendingPathComponent("debug.log")
+        try? FileManager.default.createDirectory(at: AtelioPaths.root, withIntermediateDirectories: true)
+        let logFile = AtelioPaths.debugLogPath
 
         if let handle = try? FileHandle(forWritingTo: logFile) {
             handle.seekToEndOfFile()
@@ -73,19 +71,16 @@ enum AtelioConfig {
     }
 
     /// 如果 config 檔案不存在，建立一個含範例內容的檔案
+    ///
+    /// 目錄 `~/.atelio/` 由 `AtelioPaths.ensureRoot()`（App 啟動早期）統一建立，
+    /// 本函式相信目錄已存在、不再自建。
     private static func writeDefaultIfMissing() {
-        let path = configPath
+        let path = AtelioPaths.configPath
         let fm = FileManager.default
         guard !fm.fileExists(atPath: path.path) else {
             debugLog("config_already_exists", ["path": path.path])
             return
         }
-
-        // 確保目錄存在
-        try? fm.createDirectory(
-            at: path.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
 
         let template = """
         {
@@ -105,7 +100,7 @@ enum AtelioConfig {
     /// 只有整個 JSON 無法 parse 成 object 時才全回預設。
     /// 讀取失敗或格式錯誤 → log 並保持內建預設。
     private static func mergeFromFile() {
-        guard let data = try? Data(contentsOf: configPath) else {
+        guard let data = try? Data(contentsOf: AtelioPaths.configPath) else {
             NSLog("[AtelioConfig] 無法讀 config 檔，使用內建白名單")
             debugLog("config_read_fail")
             return
@@ -217,14 +212,8 @@ enum AtelioConfig {
     /// - 檔案存在但 parse 失敗 → **不覆寫原檔**，只 log；避免吃掉使用者的 additional_ai_clis
     ///   等現有設定。使用者需手動修好 config.json 格式，下次 set 才會生效。
     private static func persistFontSize(_ value: CGFloat) {
-        let path = configPath
+        let path = AtelioPaths.configPath
         let fm = FileManager.default
-
-        // 確保目錄存在（極罕見情況：~/.atelio 被刪）
-        try? fm.createDirectory(
-            at: path.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
 
         var json: [String: Any] = [:]
         let fileExists = fm.fileExists(atPath: path.path)
