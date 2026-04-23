@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		201761B72D2C04C33A824249 /* PreviewContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 874A9BDB0C62E94092277637 /* PreviewContentView.swift */; };
 		3040648AAF6153F964D659D5 /* LayoutSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27255914750C667606CEA5AC /* LayoutSnapshotTests.swift */; };
+		426C3F6A2F99BE4000230551 /* AtelioCLI in CopyFiles */ = {isa = PBXBuildFile; fileRef = 42A0EC352F8ADD7C004D2C0C /* AtelioCLI */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		42A0EC492F8ADDA9004D2C0C /* AtelioShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; };
 		42A0EC4A2F8ADDA9004D2C0C /* AtelioShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		42A0EC502F8ADF30004D2C0C /* AtelioShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 42A0EC412F8ADDA9004D2C0C /* AtelioShared.framework */; };
@@ -30,6 +31,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		426C3F672F99BDD600230551 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 42A0EC1B2F8ADD1B004D2C0C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 42A0EC342F8ADD7C004D2C0C;
+			remoteInfo = AtelioCLI;
+		};
 		42A0EC472F8ADDA9004D2C0C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 42A0EC1B2F8ADD1B004D2C0C /* Project object */;
@@ -54,6 +62,16 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		426C3F692F99BDEC00230551 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				426C3F6A2F99BE4000230551 /* AtelioCLI in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		42A0EC332F8ADD7C004D2C0C /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -257,11 +275,13 @@
 				42A0EC1F2F8ADD1B004D2C0C /* Sources */,
 				42A0EC202F8ADD1B004D2C0C /* Frameworks */,
 				42A0EC212F8ADD1B004D2C0C /* Resources */,
+				426C3F692F99BDEC00230551 /* CopyFiles */,
 				42A0EC4E2F8ADDA9004D2C0C /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				426C3F682F99BDD600230551 /* PBXTargetDependency */,
 				42A0EC482F8ADDA9004D2C0C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
@@ -489,6 +509,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		426C3F682F99BDD600230551 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 42A0EC342F8ADD7C004D2C0C /* AtelioCLI */;
+			targetProxy = 426C3F672F99BDD600230551 /* PBXContainerItemProxy */;
+		};
 		42A0EC482F8ADDA9004D2C0C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 42A0EC402F8ADDA9004D2C0C /* AtelioShared */;
@@ -726,6 +751,7 @@
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path",
+					"@executable_path/../Frameworks",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -743,6 +769,7 @@
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path",
+					"@executable_path/../Frameworks",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
