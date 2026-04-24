@@ -9,7 +9,27 @@ struct AtelioApp: App {
     /// 進行中 dispatch/wait 計數（供 CommandGroup 判斷是否 disable 字體快捷鍵）
     @StateObject private var dispatchActivity = DispatchActivity()
 
+    /// AppDelegate：關掉最後一個視窗時不終止 App，讓 IPC server 與 sessions
+    /// 繼續存活。使用者透過 ⌘Q 或選單才真正結束。
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
+        // 壓掉 AppKit 自動注入但對 terminal 場景無意義的行為：
+        // - Dictation / Emoji & Symbols menu item：SwiftTerm 不做自然語言編輯
+        // - AutoFill heuristic controller：Ghostty 實測 macOS 26 會對 terminal
+        //   造成可感知卡頓（PR ghostty-org/ghostty#8625），關掉背景掃描
+        // - Full Screen menu item：由 Atelio 自己決定是否提供全螢幕
+        //
+        // Writing Tools / AutoFill 的選單項本身由 AppKit 系統級機制每次 popup
+        // 前動態重建，SwiftUI / AppDelegate runtime 移除不可靠（業界共識，見
+        // Apple Dev Forum #740591），不處理。
+        UserDefaults.standard.register(defaults: [
+            "NSDisabledDictationMenuItem": true,
+            "NSDisabledCharacterPaletteMenuItem": true,
+            "NSAutoFillHeuristicControllerEnabled": false,
+            "NSFullScreenMenuItemEverywhere": false,
+        ])
+
         // 忽略 SIGPIPE：client 斷線時 write socket 會收到 SIGPIPE，
         // 不處理的話會直接殺掉 App。忽略後 write 回傳 -1 + EPIPE，
         // 由 IPCFraming.writeMessage 的錯誤處理接住。
@@ -39,7 +59,7 @@ struct AtelioApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        Window("Atelio", id: "main") {
             ContentView(manager: manager)
                 .onAppear {
                     startIPCServer()
@@ -48,7 +68,25 @@ struct AtelioApp: App {
         .commands {
             // 字體大小調整：放在檢視選單群組，不覆蓋既有 commands
             FontSizeCommands(dispatchActivity: dispatchActivity)
+            // 說明選單：取代 SwiftUI 預設的 Atelio Help（沒 Help Book 點了會跳
+            // 「無說明文件」dialog），改指向自己 render 的 HelpView window
+            HelpCommands()
         }
+
+        Window("Atelio 說明", id: "help") {
+            HelpView()
+                // 雙保險：若 macOS state restoration 只還原 help window，
+                // 主 window 的 ContentView.onAppear 不會觸發、IPC 起不來。
+                // startIPCServer 有 guard ipcServer == nil 保護，安全呼叫。
+                .onAppear {
+                    startIPCServer()
+                }
+        }
+        .defaultSize(width: 500, height: 600)
+        .windowResizability(.contentSize)
+        // Help 是附屬 transient 視窗，不納入系統視窗還原，避免下次啟動
+        // 只還原 help 造成「沒 main window、IPC 沒起來」的僵局。
+        .restorationBehavior(.disabled)
     }
 
     private func startIPCServer() {
@@ -59,6 +97,34 @@ struct AtelioApp: App {
             ipcServer = server
         } catch {
             print("IPC server 啟動失敗: \(error.localizedDescription)")
+        }
+    }
+}
+
+/// 關視窗不退 App：保持 IPC server 與 AI CLI sessions 在背景運行。
+///
+/// `Window` scene 的 macOS 預設行為是「關掉最後視窗 → App 終止」，對 Atelio
+/// 而言等同殺死所有 worker sessions 與 IPC。override 成 false 後，使用者關
+/// 視窗只是隱藏 UI，IPC 與 sessions 持續運行；點 Dock icon 可重開視窗，
+/// ⌘Q 或選單才真正退出。
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+}
+
+/// 說明選單 Commands：替換 SwiftUI 預設的 "Atelio Help"（原本 action 是
+/// `showHelp:`，Atelio 沒 bundle Help Book、點了只會跳系統 dialog）。
+///
+/// 新 item 打開 `Atelio 說明` window（由 `HelpView` 實作）。
+private struct HelpCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .help) {
+            Button("Atelio 說明") {
+                openWindow(id: "help")
+            }
         }
     }
 }
