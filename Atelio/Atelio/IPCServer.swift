@@ -180,6 +180,8 @@ class IPCServer {
             return handleNotify(request)
         case .peek:
             return handlePeek(request)
+        case .sendKeys:
+            return handleSendKeys(request)
         }
     }
 
@@ -273,6 +275,53 @@ class IPCServer {
             }
         }
         return nil
+    }
+
+    /// 送 raw keystroke 到 session PTY（不包 bracketed paste、不補 \r、不動 TurnCoordinator）
+    /// 用於操作 AI CLI 的 TUI 互動（例如 approval prompt）。
+    /// 用 semaphore 同步：在 main queue 查完 session / isRunning / key 翻譯後才 return，
+    /// 確保 CLI 收到的 ok 代表「真的 enqueue 到 PTY」。
+    private func handleSendKeys(_ request: IPCRequest) -> IPCResponse {
+        let key = request.text ?? ""
+        let sessionName = request.name
+
+        guard !key.isEmpty else {
+            return IPCResult.response(IPCResult.invalidRequest, IPCResult.invalidRequestHint,
+                                      message: "send-keys 指令需要 key 參數")
+        }
+
+        let semaphore = DispatchSemaphore(value: 0)
+        var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
+                semaphore.signal(); return
+            }
+            guard let session = self.manager.sessions[sessionName] else {
+                response = IPCResult.response(IPCResult.sessionNotFound, IPCResult.sessionNotFoundHint,
+                                              message: "找不到 session '\(sessionName)'")
+                semaphore.signal(); return
+            }
+            guard session.isRunning else {
+                response = IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint,
+                                              message: "session '\(sessionName)' 的 process 已結束")
+                semaphore.signal(); return
+            }
+            // instance translateKey：方向鍵會依 session 當下的 applicationCursor 決定 sequence
+            guard let bytes = session.translateKey(key) else {
+                response = IPCResult.response(IPCResult.invalidRequest, IPCResult.invalidRequestHint,
+                                              message: "不認得的 key: '\(key)'（支援：enter/return/esc/escape/tab/space/bspace/backspace/up/down/left/right/c-<letter>/單字元）")
+                semaphore.signal(); return
+            }
+            session.sendRaw(bytes: bytes, originalKey: key)
+            response = IPCResult.response(IPCResult.ok, IPCResult.okHint,
+                                          message: "已送 key='\(key)' 到 session '\(sessionName)'")
+            semaphore.signal()
+        }
+
+        _ = semaphore.wait(timeout: .now() + 5)
+        return response
     }
 
     private func handleNotify(_ request: IPCRequest) -> IPCResponse {

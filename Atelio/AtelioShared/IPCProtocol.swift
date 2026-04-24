@@ -4,7 +4,16 @@ import Foundation
 
 public struct IPCRequest: Codable {
     public enum Command: String, Codable {
-        case open, dispatch, status, close, screen, wait, list, notify, peek
+        case open
+        case dispatch
+        case status
+        case close
+        case screen
+        case wait
+        case list
+        case notify
+        case peek
+        case sendKeys = "send-keys"
     }
 
     public let command: Command

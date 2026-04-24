@@ -235,6 +235,85 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         return sem
     }
 
+    /// 送 raw keystroke bytes 到 PTY，不包 bracketed paste、不補 \r、不動 TurnCoordinator。
+    /// 用於操作 AI CLI 的 TUI 互動（例如 approval prompt）。
+    /// - Parameters:
+    ///   - bytes: 已翻譯完成的 raw bytes（由 `translateKey` 產生）
+    ///   - originalKey: 使用者輸入的原始 key name（用於 log）
+    func sendRaw(bytes: String, originalKey: String) {
+        guard isRunning else { return }
+        let hex = bytes.utf8.map { String(format: "%02X", $0) }.joined(separator: " ")
+        AtelioConfig.debugLog("send_keys", [
+            "name": name,
+            "key": originalKey,
+            "hex": hex
+        ])
+        terminalView.send(txt: bytes)
+    }
+
+    /// 將 key name 翻譯為要送進 PTY 的 bytes（考慮 session 當下的 TUI 狀態）。
+    /// 方向鍵會依 `Terminal.applicationCursor`（DECCKM）送 normal `\e[A` 或 application `\eOA` sequence。
+    /// 其他 key 委派到 static `translateKey(_:)`。
+    func translateKey(_ key: String) -> String? {
+        let lower = key.lowercased()
+        if let arrow = Self.arrowLetter(for: lower) {
+            let appMode = terminalView.getTerminal().applicationCursor
+            let intro = appMode ? "\u{001B}O" : "\u{001B}["
+            return "\(intro)\(arrow)"
+        }
+        return Self.translateKey(key)
+    }
+
+    /// 將 key name 翻譯為 PTY bytes（不需要 session state 的部分）。大小寫不敏感。
+    ///
+    /// 支援的 key name：
+    ///   - `enter` / `return`        → 0x0D
+    ///   - `esc` / `escape`          → 0x1B
+    ///   - `tab`                     → 0x09
+    ///   - `space`                   → 0x20
+    ///   - `bspace` / `backspace`    → 0x7F
+    ///   - `c-<letter>`              → Ctrl-letter（0x01~0x1A，例 c-c=0x03）
+    ///   - 任意單字元（`key.count == 1`）→ 原字元
+    ///
+    /// 方向鍵（up/down/left/right）需要 session state（applicationCursor），由 instance `translateKey(_:)` 處理。
+    /// 不認得的多字元 key 回 nil（由呼叫端回 invalid_request）。
+    public static func translateKey(_ key: String) -> String? {
+        // 單字元優先，不做 lowercase（保留 'Y' vs 'y' 的語意）
+        if key.count == 1 {
+            return key
+        }
+
+        let lower = key.lowercased()
+        switch lower {
+        case "enter", "return":     return "\u{000D}"
+        case "esc", "escape":       return "\u{001B}"
+        case "tab":                 return "\u{0009}"
+        case "space":               return "\u{0020}"
+        case "bspace", "backspace": return "\u{007F}"
+        default: break
+        }
+
+        // Ctrl-<letter>: c-a ~ c-z
+        if lower.hasPrefix("c-") && lower.count == 3,
+           let last = lower.last,
+           let ascii = last.asciiValue,
+           ascii >= 0x61, ascii <= 0x7A {
+            return String(UnicodeScalar(ascii & 0x1F))
+        }
+
+        return nil
+    }
+
+    private static func arrowLetter(for lower: String) -> String? {
+        switch lower {
+        case "up":    return "A"
+        case "down":  return "B"
+        case "right": return "C"
+        case "left":  return "D"
+        default: return nil
+        }
+    }
+
     /// 開始 wait：取得目前 turn 的 semaphore
     func startWait() -> DispatchSemaphore? {
         guard isRunning else { return nil }

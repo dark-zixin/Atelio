@@ -14,6 +14,7 @@ struct AtelioCLI: ParsableCommand {
             ListCommand.self,
             NotifyCommand.self,
             PeekCommand.self,
+            SendKeysCommand.self,
         ]
     )
 }
