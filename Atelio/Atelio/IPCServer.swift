@@ -308,6 +308,9 @@ class IPCServer {
                                               message: "session '\(sessionName)' 的 process 已結束")
                 semaphore.signal(); return
             }
+            if let err = self.verifyOwner(session: session, callerPID: request.callerPID, command: "send-keys") {
+                response = err; semaphore.signal(); return
+            }
             // instance translateKey：方向鍵會依 session 當下的 applicationCursor 決定 sequence
             guard let bytes = session.translateKey(key) else {
                 response = IPCResult.response(IPCResult.invalidRequest, IPCResult.invalidRequestHint,
