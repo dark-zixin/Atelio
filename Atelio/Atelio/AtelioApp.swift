@@ -45,12 +45,17 @@ struct AtelioApp: App {
         // - ~/.atelio/notify.sh → 用 AtelioPaths.notifyScriptTemplate 寫入，根據第 2
         //   行 marker 比對：marker 在 → 視為 Atelio 自管可覆寫；marker 不在 → 視為
         //   使用者接管不動
+        // - ~/.atelio/skills/atelio/ → 從 bundle 複製，主 AI 可 symlink 到各自的
+        //   skill 目錄取得說明書（每次啟動覆蓋確保版本與 App 一致）
         AtelioPaths.ensureRoot()
         AtelioPaths.ensureBin()
         let cliBinaryURL = Bundle.main.bundleURL
             .appendingPathComponent("Contents/MacOS/AtelioCLI")
         AtelioPaths.updateCLISymlink(target: cliBinaryURL)
         AtelioPaths.ensureNotifyScript(template: AtelioPaths.notifyScriptTemplate)
+        let skillSourceURL = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Resources/skills/atelio")
+        AtelioPaths.ensureSkill(from: skillSourceURL)
 
         // 載入全域設定（AI CLI 白名單、字體大小等）。必須在 TerminalManager /
         // IPCServer 使用前完成，以便後續 session init 時能讀到正確的字體大小

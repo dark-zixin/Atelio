@@ -88,6 +88,46 @@ public enum AtelioPaths {
 
         """
 
+    /// Skill 根目錄：`~/.atelio/skills/`
+    public static var skillsPath: URL {
+        root.appendingPathComponent("skills")
+    }
+
+    /// Atelio skill 目錄：`~/.atelio/skills/atelio/`
+    ///
+    /// 使用者的主 AI（CC / Codex / Gemini 等）可 symlink 或 copy 此目錄到各自的
+    /// skill 搜尋路徑，取得最新版說明書。由 `ensureSkill(from:)` 在 App 啟動時
+    /// 從 bundle 更新至此目錄。
+    public static var skillPath: URL {
+        skillsPath.appendingPathComponent("atelio")
+    }
+
+    /// 從 App bundle 安裝（或更新）skill 到 `~/.atelio/skills/atelio/`。
+    ///
+    /// `sourceDirURL` 為 bundle 內的 skill 目錄，例如
+    /// `Bundle.main.bundleURL/Contents/Resources/skills/atelio`。
+    /// 若 source 不存在（CLI 環境、測試環境）則靜默跳過，回傳 true。
+    /// 若目的地已存在則先移除再複製，確保每次 App 啟動都能更新至 bundle 版本。
+    @discardableResult
+    public static func ensureSkill(from sourceDirURL: URL) -> Bool {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: sourceDirURL.path) else { return true }
+
+        do {
+            try fm.createDirectory(at: skillsPath, withIntermediateDirectories: true)
+            if fm.fileExists(atPath: skillPath.path) {
+                try fm.removeItem(at: skillPath)
+            }
+            try fm.copyItem(at: sourceDirURL, to: skillPath)
+            NSLog("[AtelioPaths] ensureSkill: 安裝至 %@", skillPath.path)
+            return true
+        } catch {
+            NSLog("[AtelioPaths] ensureSkill: 安裝失敗: %@ source=%@",
+                  error.localizedDescription, sourceDirURL.path)
+            return false
+        }
+    }
+
     /// IPC Unix domain socket：`~/.atelio/atelio.sock`
     ///
     /// 以 `String` 回傳，供 `sockaddr_un.sun_path` 直接使用 `utf8CString`，
