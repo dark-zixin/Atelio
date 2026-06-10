@@ -14,6 +14,8 @@ struct SkillSetupSheet: View {
     /// 已安裝的 skill 版本（nil = 解析不到，略過版本行）。由 caller 讀一次傳入，
     /// 避免 view 每次 render 都讀檔。
     let skillVersion: String?
+    /// 此次為「更新」情境（已通知過舊版本）還是「首次安裝」，決定文案。
+    let isUpdate: Bool
     /// 關閉自己
     let onDismiss: () -> Void
     /// 開啟 Help 視窗（由 caller 注入 openWindow，sheet 本身不直接依賴環境）
@@ -25,7 +27,7 @@ struct SkillSetupSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("讓你的 AI 讀懂 Atelio")
+                Text(isUpdate ? "Atelio 說明書已更新" : "讓你的 AI 讀懂 Atelio")
                     .font(scale.font(.title2))
                     .fontWeight(.semibold)
 
@@ -37,7 +39,9 @@ struct SkillSetupSheet: View {
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Atelio 附了一份操作手冊（skill），已經裝在你的電腦上：")
+                Text(isUpdate
+                     ? "Atelio 的操作手冊（skill）已更新並重新安裝到你的電腦："
+                     : "Atelio 附了一份操作手冊（skill），已經裝在你的電腦上：")
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text("~/.atelio/skills/atelio/")
@@ -45,11 +49,16 @@ struct SkillSetupSheet: View {
                     .textSelection(.enabled)
                     .foregroundStyle(.secondary)
 
-                Text("""
-                最後一步：把它接進你的 AI 的 skill 目錄，主 AI 才知道怎麼操作 \
-                Atelio。你可以自己接，也可以把說明整段複製給 AI 讓它幫你接 —— \
-                兩種做法的指令都在「安裝說明」裡。
-                """)
+                Text(isUpdate
+                     ? """
+                     如果你當初是用 symlink 連結到 AI 的 skill 目錄，無需動作、會自動 \
+                     拿到新版；如果是用複製安裝的，請依「安裝說明」重新接一次。
+                     """
+                     : """
+                     最後一步：把它接進你的 AI 的 skill 目錄，主 AI 才知道怎麼操作 \
+                     Atelio。你可以自己接，也可以把說明整段複製給 AI 讓它幫你接 —— \
+                     兩種做法的指令都在「安裝說明」裡。
+                     """)
                 .fixedSize(horizontal: false, vertical: true)
             }
             .font(scale.font(.body))
@@ -74,6 +83,10 @@ struct SkillSetupSheet: View {
     }
 }
 
-#Preview {
-    SkillSetupSheet(skillVersion: "0.1.0", onDismiss: {}, onOpenHelp: {})
+#Preview("首次安裝") {
+    SkillSetupSheet(skillVersion: "0.1.0", isUpdate: false, onDismiss: {}, onOpenHelp: {})
+}
+
+#Preview("版本更新") {
+    SkillSetupSheet(skillVersion: "0.2.0", isUpdate: true, onDismiss: {}, onOpenHelp: {})
 }

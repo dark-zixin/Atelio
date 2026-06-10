@@ -5,8 +5,11 @@ struct ContentView: View {
     @Bindable var manager: TerminalManager
     @Environment(\.openWindow) private var openWindow
 
-    /// 是否顯示 skill 安裝引導 sheet。
-    @State private var showSkillSetup = false
+    /// skill 安裝引導 sheet 的呈現內容；nil = 不顯示。
+    ///
+    /// 用單一 item 攜帶版本與首次/更新旗標，避免多個 @State 在 sheet 呈現當下被
+    /// 讀到不一致的值（先前用兩個 @State + isPresented，sheet 會讀到 isUpdate 舊值）。
+    @State private var skillSetup: SkillSetupContext?
 
     var body: some View {
         Group {
@@ -18,15 +21,26 @@ struct ContentView: View {
         }
         .frame(minWidth: 600, minHeight: 400)
         .onAppear {
-            // 版本控管暫時放空：每次開 App 都彈，方便調 sheet / Help 內容。
-            // 定稿後改成比對「已安裝 skill 版本」與 config 的 skill_notified_version，
-            // 不同才彈（首次 = 欄位不存在），dismiss 時寫回當前版本。
-            showSkillSetup = true
+            // 版本 gating：比對已安裝 skill 版本與 config 記錄的 skill_notified_version。
+            // - 首次（從未通知，欄位為 nil）一定彈
+            // - 之後只有 skill 版本實際變動才彈（App 更新帶新手冊）
+            // - 版本解析不到時：僅首次仍彈一次做 onboarding；已有記錄則不再騷擾
+            let current = AtelioPaths.installedSkillVersion()
+            let notified = AtelioConfig.skillNotifiedVersion
+            let shouldShow = (notified == nil) || (current != nil && current != notified)
+            if shouldShow {
+                skillSetup = SkillSetupContext(skillVersion: current, isUpdate: notified != nil)
+            }
         }
-        .sheet(isPresented: $showSkillSetup) {
+        .sheet(item: $skillSetup) { ctx in
             SkillSetupSheet(
-                skillVersion: AtelioPaths.installedSkillVersion(),
-                onDismiss: { showSkillSetup = false },
+                skillVersion: ctx.skillVersion,
+                isUpdate: ctx.isUpdate,
+                onDismiss: {
+                    // 記下「這個版本已提示過」；解析不到時寫 sentinel，避免每次啟動重彈
+                    AtelioConfig.setSkillNotifiedVersion(ctx.skillVersion ?? "unknown")
+                    skillSetup = nil
+                },
                 onOpenHelp: { openWindow(id: "help") }
             )
         }
@@ -48,4 +62,14 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
+
+/// skill 安裝引導 sheet 的呈現內容。把版本與首次/更新旗標綁成單一 item，
+/// 配 `.sheet(item:)` 確保呈現當下資料一致。
+private struct SkillSetupContext: Identifiable {
+    let id = UUID()
+    /// 已安裝 skill 版本（nil = 解析不到）
+    let skillVersion: String?
+    /// true = 版本更新情境；false = 首次安裝
+    let isUpdate: Bool
 }

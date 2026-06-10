@@ -26,6 +26,13 @@ enum AtelioConfig {
     /// 寫入請走 `setFontSize(_:)` / `resetFontSize()`，以確保同步持久化。
     private(set) static var fontSize: CGFloat = fontSizeDefault
 
+    // MARK: - Skill 彈窗版本
+
+    /// 已通知過的 skill 版本（安裝引導彈窗 gating 用）。
+    /// nil = 從未通知（首次啟動）；非 nil = 已彈過該版本，僅版本變動時再彈。
+    /// 寫入請走 `setSkillNotifiedVersion(_:)` 以同步持久化。
+    private(set) static var skillNotifiedVersion: String?
+
     // MARK: - Debug Log
 
     /// 共用 debug log：寫到 ~/.atelio/debug.log 與 NSLog
@@ -136,6 +143,14 @@ enum AtelioConfig {
             debugLog("config_font_size_type_mismatch", [:])
         }
 
+        // skill 彈窗已通知版本：字串型別才套用，錯的話保留 nil 並 log
+        if let v = dict["skill_notified_version"] as? String {
+            skillNotifiedVersion = v
+            debugLog("config_skill_notified_version_loaded", ["version": v])
+        } else if dict["skill_notified_version"] != nil {
+            debugLog("config_skill_notified_version_type_mismatch", [:])
+        }
+
         debugLog("config_parse_ok", [:])
     }
 
@@ -204,14 +219,39 @@ enum AtelioConfig {
         setFontSize(fontSizeDefault)
     }
 
-    /// 將 font_size 合併寫回 config.json（保留其他欄位）
+    /// 將 font_size 合併寫回 config.json（保留其他欄位）。
+    private static func persistFontSize(_ value: CGFloat) {
+        mergeWriteConfig(reason: "font_size") { $0["font_size"] = Double(value) }
+    }
+
+    // MARK: - Skill 彈窗版本操作
+
+    /// 設定 skill 彈窗已通知版本：更新 in-memory + 合併寫回 config.json。
+    ///
+    /// 由安裝引導 sheet 關閉時呼叫，記錄「這個版本已經提示過」，下次啟動同版本
+    /// 不再彈；skill 版本變動（App 更新帶新手冊）才會再彈一次。
+    static func setSkillNotifiedVersion(_ version: String) {
+        skillNotifiedVersion = version
+        mergeWriteConfig(reason: "skill_notified_version") {
+            $0["skill_notified_version"] = version
+        }
+        debugLog("skill_notified_version_set", ["version": version])
+    }
+
+    // MARK: - Config 合併寫檔
+
+    /// 將一組變更合併寫回 config.json，保留其他欄位。
     ///
     /// 安全寫回策略：
-    /// - 檔案不存在 → 建立 minimal JSON（含 font_size）
-    /// - 檔案存在且 parse 成功 → 合併 font_size、保留其他欄位
-    /// - 檔案存在但 parse 失敗 → **不覆寫原檔**，只 log；避免吃掉使用者的 additional_ai_clis
+    /// - 檔案不存在 → 建立含這些變更的 minimal JSON
+    /// - 存在且 parse 成功 → 套用變更、保留其他欄位
+    /// - 存在但 parse 失敗 → **不覆寫原檔**，只 log；避免吃掉使用者的 additional_ai_clis
     ///   等現有設定。使用者需手動修好 config.json 格式，下次 set 才會生效。
-    private static func persistFontSize(_ value: CGFloat) {
+    @discardableResult
+    private static func mergeWriteConfig(
+        reason: String,
+        _ apply: (inout [String: Any]) -> Void
+    ) -> Bool {
         let path = AtelioPaths.configPath
         let fm = FileManager.default
 
@@ -222,36 +262,40 @@ enum AtelioConfig {
             guard let data = try? Data(contentsOf: path),
                   let obj = try? JSONSerialization.jsonObject(with: data),
                   let dict = obj as? [String: Any] else {
-                // 既有檔案無法 parse：拒絕覆寫，避免吃掉其他欄位
-                debugLog("config_font_write_skipped_parse_fail", [
+                debugLog("config_write_skipped_parse_fail", [
                     "path": path.path,
-                    "reason": "既有 config.json 不是有效 JSON object，為避免覆寫使用者設定，本次不寫檔"
+                    "reason": reason
                 ])
-                return
+                return false
             }
             json = dict
         }
 
-        json["font_size"] = Double(value)
+        apply(&json)
 
         // 寫回（pretty printed，穩定 key 排序）
         let options: JSONSerialization.WritingOptions = [.prettyPrinted, .sortedKeys]
-        if let newData = try? JSONSerialization.data(withJSONObject: json, options: options) {
-            do {
-                try newData.write(to: path, options: [.atomic])
-                debugLog("config_font_write_ok", [
-                    "path": path.path,
-                    "size": newData.count,
-                    "merged_existing": fileExists
-                ])
-            } catch {
-                debugLog("config_font_write_fail", [
-                    "path": path.path,
-                    "error": error.localizedDescription
-                ])
-            }
-        } else {
-            debugLog("config_font_serialize_fail", [:])
+        guard let newData = try? JSONSerialization.data(withJSONObject: json, options: options) else {
+            debugLog("config_serialize_fail", ["reason": reason])
+            return false
+        }
+
+        do {
+            try newData.write(to: path, options: [.atomic])
+            debugLog("config_write_ok", [
+                "path": path.path,
+                "size": newData.count,
+                "merged_existing": fileExists,
+                "reason": reason
+            ])
+            return true
+        } catch {
+            debugLog("config_write_fail", [
+                "path": path.path,
+                "error": error.localizedDescription,
+                "reason": reason
+            ])
+            return false
         }
     }
 }
