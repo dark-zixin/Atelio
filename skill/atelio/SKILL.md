@@ -13,10 +13,10 @@ argument-hint: "[任務描述，如：開 codex 在 /repo 做事]"
 
 1. **Atelio.app 必須在跑**（它是 IPC server）。先測連線：
    ```
-   atelio list
+   ~/.atelio/bin/atelio list
    ```
    回 `無法連線到 Atelio App` → app 沒開，請使用者開啟 Atelio.app 後再操作。
-2. **怎麼呼叫**：CLI 在 `~/.atelio/bin/atelio`，已在 PATH 可直接用；本手冊範例一律寫 `atelio`。
+2. **怎麼呼叫**：CLI 在固定路徑 `~/.atelio/bin/atelio`（穩定契約路徑，不依賴 PATH 設定）。本手冊範例一律用此絕對路徑直接呼叫；**不要假設裸 `atelio` 在 PATH**——多數環境不在，會 `command not found`。
 
 ## 心智模型（先讀，再操作）
 
@@ -32,50 +32,50 @@ argument-hint: "[任務描述，如：開 codex 在 /repo 做事]"
 
 ### open — 開 session
 ```
-atelio open <name> --cmd "<啟動指令>" --dir <工作目錄> --purpose "<用途>"
+~/.atelio/bin/atelio open <name> --cmd "<啟動指令>" --dir <工作目錄> --purpose "<用途>"
 ```
 - `name` 必填、唯一（重複會被拒）。`--cmd` 預設 `/bin/zsh`、`--dir` 預設 `/tmp`、`--purpose` 預設空（供 list / 標題列顯示，多 worker 時建議填以便辨認）。
-- 例：`atelio open reviewer --cmd codex --dir /repo --purpose "審查 PR"`
+- 例：`~/.atelio/bin/atelio open reviewer --cmd codex --dir /repo --purpose "審查 PR"`
 - 開 AI CLI 時把 CLI 當 cmd（`--cmd codex` / `--cmd claude` / `--cmd gemini`）。也可先開 shell 再在裡面手動啟動 AI CLI——Atelio 會在 dispatch 當下動態偵測 foreground 是不是 AI CLI。
 
 ### dispatch — 派任務並等完成
 ```
-atelio dispatch <name> "<任務文字>" --timeout <秒>
+~/.atelio/bin/atelio dispatch <name> "<任務文字>" --timeout <秒>
 ```
 - `--timeout` 預設 60；根據任務估算，寧可設大，timeout 到了仍可用 `wait` 繼續等。送出後**阻塞**直到完成或 timeout，回傳去噪後的本輪輸出。
 - 回傳的 `result` 決定下一步，見「result 判讀」。
 
 ### wait — 等一個進行中的 turn 完成
 ```
-atelio wait <name> --timeout <秒>
+~/.atelio/bin/atelio wait <name> --timeout <秒>
 ```
 - session 已 idle → 立刻回當前畫面。仍在工作 → 等到完成或 timeout。
 - 用在 dispatch 回 `turn_in_progress` / `deadline_reached` 後想繼續等。
 
 ### screen — 讀當前完整畫面
 ```
-atelio screen <name>
+~/.atelio/bin/atelio screen <name>
 ```
 - 回傳當前整頁畫面（含 scrollback，去噪後）。**不受 owner 限制**——別人的 session 也能看。
 - 用於 dispatch/wait 回傳不足以判斷時（如 `turn_in_progress` 不帶 output）、回傳內容看不出狀況、或要查當前進度。
 
 ### status / list — 查狀態
 ```
-atelio status <name>      # 單一 session 詳情
-atelio list               # 列出所有 session
+~/.atelio/bin/atelio status <name>      # 單一 session 詳情
+~/.atelio/bin/atelio list               # 列出所有 session
 ```
 
 ### send-keys — 送 raw 按鍵到 TUI
 ```
-atelio send-keys <name> <key>
+~/.atelio/bin/atelio send-keys <name> <key>
 ```
 - key（大小寫不敏感）：`enter`、`esc`、`tab`、`space`、`bspace`（亦可寫 `return`/`escape`/`backspace`）、`up`/`down`/`left`/`right`、`c-<字母>`（Ctrl，如 `c-c`）、或任意**單字元**（如 `y`/`1`）。
 - 不包 bracketed paste、不補 Enter。**不帶 output**（回傳只有操作確認），如需確認畫面結果用 `screen`。主要用於 approval 選單（見 approval 工作流）。
 
 ### close — 關 session
 ```
-atelio close <name>
-atelio close <name> --confirm <key>
+~/.atelio/bin/atelio close <name>
+~/.atelio/bin/atelio close <name> --confirm <key>
 ```
 - session 作業中時第一次 close 會要求二次確認、回傳裡帶確認 key；用 `--confirm <key>` 再 close 一次。
 - 關閉後 name 釋放，可同名再開。
@@ -98,13 +98,13 @@ atelio close <name> --confirm <key>
 ## 工作流：基本回合
 
 ```
-atelio open worker --cmd codex --dir /repo --purpose "做 X"
-atelio dispatch worker "請做 X，完成後說明改了什麼" --timeout 120
+~/.atelio/bin/atelio open worker --cmd codex --dir /repo --purpose "做 X"
+~/.atelio/bin/atelio dispatch worker "請做 X，完成後說明改了什麼" --timeout 120
 # 看 result：
 #   hook_turn_ended → 直接用 output
 #   quiet_window_met → 看 output 判斷是否真完成；沒完成就 wait
-#   turn_in_progress / deadline_reached → atelio wait worker --timeout 120
-atelio close worker
+#   turn_in_progress / deadline_reached → ~/.atelio/bin/atelio wait worker --timeout 120
+~/.atelio/bin/atelio close worker
 ```
 
 ## 工作流：處理 approval
@@ -115,9 +115,9 @@ AI CLI 遇到需授權的操作（執行指令、寫檔等）會跳 approval 選
 
 ```
 # dispatch 回傳的 output 顯示 approval 選單後，按畫面上的選項送鍵：
-atelio send-keys worker 2     # 選畫面上編號 2 的選項
-atelio send-keys worker esc   # 取消
-atelio wait worker --timeout 120   # 選了同意後，等 AI 繼續做事
+~/.atelio/bin/atelio send-keys worker 2     # 選畫面上編號 2 的選項
+~/.atelio/bin/atelio send-keys worker esc   # 取消
+~/.atelio/bin/atelio wait worker --timeout 120   # 選了同意後，等 AI 繼續做事
 ```
 **以畫面顯示為準**——常見是數字選單或 y/n 提示，`esc` 通常取消。
 
@@ -127,8 +127,8 @@ atelio wait worker --timeout 120   # 選了同意後，等 AI 繼續做事
 
 以 Claude Code 為例（用背景執行發 dispatch，完成時自動喚醒收割）：
 ```
-Bash("atelio dispatch w1 '任務A' --timeout 1800", run_in_background=true)
-Bash("atelio dispatch w2 '任務B' --timeout 1800", run_in_background=true)
+Bash("~/.atelio/bin/atelio dispatch w1 '任務A' --timeout 1800", run_in_background=true)
+Bash("~/.atelio/bin/atelio dispatch w2 '任務B' --timeout 1800", run_in_background=true)
 # 兩個 worker 此刻並行在跑，你可以去做別的事；各自完成時分別回來收割
 ```
 若 orchestrator 沒有背景執行能力，只能用阻塞 dispatch 依序跑。
