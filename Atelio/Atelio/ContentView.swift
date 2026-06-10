@@ -1,7 +1,12 @@
 import SwiftUI
+import AtelioShared
 
 struct ContentView: View {
     @Bindable var manager: TerminalManager
+    @Environment(\.openWindow) private var openWindow
+
+    /// 是否顯示 skill 安裝引導 sheet。
+    @State private var showSkillSetup = false
 
     var body: some View {
         Group {
@@ -12,6 +17,19 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 600, minHeight: 400)
+        .onAppear {
+            // 版本控管暫時放空：每次開 App 都彈，方便調 sheet / Help 內容。
+            // 定稿後改成比對「已安裝 skill 版本」與 config 的 skill_notified_version，
+            // 不同才彈（首次 = 欄位不存在），dismiss 時寫回當前版本。
+            showSkillSetup = true
+        }
+        .sheet(isPresented: $showSkillSetup) {
+            SkillSetupSheet(
+                skillVersion: AtelioPaths.installedSkillVersion(),
+                onDismiss: { showSkillSetup = false },
+                onOpenHelp: { openWindow(id: "help") }
+            )
+        }
     }
 
     // MARK: - 空狀態

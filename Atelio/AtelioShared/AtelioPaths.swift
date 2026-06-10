@@ -128,6 +128,28 @@ public enum AtelioPaths {
         }
     }
 
+    /// 解析已安裝 skill 的版本號。
+    ///
+    /// 從 `~/.atelio/skills/atelio/SKILL.md` 抓 `<!-- version: x.y.z -->` 的版本字串
+    /// ——即實際被主 AI 讀到的那份手冊版本。找不到檔案或抓不到版本格式時回 nil，
+    /// 由呼叫端決定 fallback 顯示。版本顯示與（日後的）版本 gating 共用此來源。
+    public static func installedSkillVersion() -> String? {
+        let mdURL = skillPath.appendingPathComponent("SKILL.md")
+        guard let content = try? String(contentsOf: mdURL, encoding: .utf8),
+              let range = content.range(
+                  of: #"version:\s*[0-9][0-9.]*"#,
+                  options: .regularExpression
+              )
+        else { return nil }
+
+        return String(content[range])
+            .replacingOccurrences(
+                of: #"^version:\s*"#,
+                with: "",
+                options: .regularExpression
+            )
+    }
+
     /// IPC Unix domain socket：`~/.atelio/atelio.sock`
     ///
     /// 以 `String` 回傳，供 `sockaddr_un.sun_path` 直接使用 `utf8CString`，

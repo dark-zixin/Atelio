@@ -105,29 +105,6 @@
 		};
 /* End PBXCopyFilesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		42A0ECCF2F9ACD1B004D2C0C /* Copy skill to bundle */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/../skill/atelio",
-			);
-			name = "Copy skill to bundle";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Resources/skills/atelio",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Copy repo skill/atelio/ into the app bundle; AtelioApp.ensureSkill mirrors it to ~/.atelio/skills/ at launch.\n# Requires ENABLE_USER_SCRIPT_SANDBOXING=NO on this target: this phase copies a whole growing directory tree\n# (future scripts/ references/) whose output filenames are dynamic and cannot be enumerated as sandbox outputs.\n# rm -rf && cp -r force-syncs every build so incremental builds always pick up skill edits.\nSKILL_SRC=\"${SRCROOT}/../skill/atelio\"\nSKILL_DST=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/skills/atelio\"\n[ -d \"${SKILL_SRC}\" ] || exit 0\nmkdir -p \"$(dirname \"${SKILL_DST}\")\"\nrm -rf \"${SKILL_DST}\"\ncp -r \"${SKILL_SRC}\" \"${SKILL_DST}\"\n";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXFileReference section */
 		0BBB0438069DBE282359237F /* FakeTerminalView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FakeTerminalView.swift; sourceTree = "<group>"; };
 		27255914750C667606CEA5AC /* LayoutSnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LayoutSnapshotTests.swift; sourceTree = "<group>"; };
@@ -482,6 +459,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		42A0ECCF2F9ACD1B004D2C0C /* Copy skill to bundle */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../skill/atelio",
+			);
+			name = "Copy skill to bundle";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Resources/skills/atelio",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Copy repo skill/atelio/ into the app bundle; AtelioApp.ensureSkill mirrors it to ~/.atelio/skills/ at launch.\n# Requires ENABLE_USER_SCRIPT_SANDBOXING=NO on this target: this phase copies a whole growing directory tree\n# (future scripts/ references/) whose output filenames are dynamic and cannot be enumerated as sandbox outputs.\n# rm -rf && cp -r force-syncs every build so incremental builds always pick up skill edits.\nSKILL_SRC=\"${SRCROOT}/../skill/atelio\"\nSKILL_DST=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/skills/atelio\"\n[ -d \"${SKILL_SRC}\" ] || exit 0\nmkdir -p \"$(dirname \"${SKILL_DST}\")\"\nrm -rf \"${SKILL_DST}\"\ncp -r \"${SKILL_SRC}\" \"${SKILL_DST}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		42A0EC1F2F8ADD1B004D2C0C /* Sources */ = {
