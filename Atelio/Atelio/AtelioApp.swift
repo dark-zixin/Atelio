@@ -61,6 +61,12 @@ struct AtelioApp: App {
         // IPCServer 使用前完成，以便後續 session init 時能讀到正確的字體大小
         // 與 marker 白名單。
         AtelioConfig.load()
+
+        // 背景預撈使用者 login shell 的完整 PATH（warm-up 快取）。GUI app 從 Dock 啟動
+        // 只有殘缺 PATH，worker 需要完整 PATH 才找得到 homebrew / nvm / ~/.local 的 AI
+        // CLI；先在此非同步撈好，開 worker 時即可命中快取、不阻塞 main thread。
+        // 詳見 AtelioShellEnv。
+        AtelioShellEnv.prewarm()
     }
 
     var body: some Scene {

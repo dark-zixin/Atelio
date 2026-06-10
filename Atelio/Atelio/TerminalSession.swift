@@ -78,13 +78,18 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
         // 啟動 process
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
-        // SwiftTerm 的預設 PATH 只有 /bin:/usr/bin:/usr/ucb:/usr/local/bin，
-        // 找不到 homebrew / nvm / ~/.local/bin 等位置的 AI CLI。
-        // 覆蓋為 Atelio App process 的 PATH，讓子 process 能找到實際安裝的指令。
-        if let parentPath = ProcessInfo.processInfo.environment["PATH"] {
+        // worker PATH 修正：
+        // SwiftTerm 預設 PATH 只有 /bin:/usr/bin:/usr/ucb:/usr/local/bin；而 GUI app 從
+        // Dock / Launchpad 啟動時，App process 自己的 PATH 也只有 launchd 殘缺集
+        // （/usr/bin:/bin:/usr/sbin:/sbin）。兩者都找不到 homebrew / nvm / ~/.local 裡的
+        // AI CLI。因此優先注入 AtelioShellEnv 撈到的「使用者 login shell 完整 PATH」；
+        // 撈取失敗才退回 App process PATH 保底（不崩，但可能仍殘缺）。詳見 AtelioShellEnv。
+        let resolvedPath = AtelioShellEnv.resolvedPath()
+            ?? ProcessInfo.processInfo.environment["PATH"]
+        if let resolvedPath {
             env.removeAll { $0.hasPrefix("PATH=") }
-            env.append("PATH=\(parentPath)")
-            AtelioConfig.debugLog("path_overridden", ["path": parentPath])
+            env.append("PATH=\(resolvedPath)")
+            AtelioConfig.debugLog("path_overridden", ["path": resolvedPath])
         } else {
             AtelioConfig.debugLog("path_not_overridden", [:])
         }
