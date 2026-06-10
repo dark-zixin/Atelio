@@ -79,18 +79,19 @@ struct HelpView: View {
 
     // MARK: - 讓 AI 讀懂 Atelio
 
-    /// Skill 安裝段落：skill 已鏡像到 ~/.atelio/skills/atelio/，剩最後一步要把它
-    /// 接進主 AI 的 skill 目錄。提供兩種「給法」（複製給 AI / 自己接），各配複製鈕。
-    /// 指令以此處為唯一來源，SkillSetupSheet 只導流到這裡。
+    /// Skill 安裝段落：skill 已鏡像到 ~/.atelio/skills/atelio/，剩最後一步要把它接進
+    /// 主 AI 的 skill 目錄。給「複製給 AI」的自帶上下文 prompt（讓 AI 依自己環境去接）
+    /// + 給手動使用者的中性說明。不放死的 ln 指令——使用者環境（用哪個 CLI、父目錄
+    /// 存不存在、之前是 cp 還是 symlink）無法控制，死指令是假精確、可能失敗或誤導。
+    /// SkillSetupSheet 只導流到這裡。
     private var skillSetupSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("讓 AI 讀懂 Atelio")
                 .font(scale.font(.headline))
 
             Text("""
-            操作手冊（skill）已裝在 ~/.atelio/skills/atelio/。把它接進你的 AI 的 \
-            skill 目錄，主 AI 才知道怎麼操作 Atelio。以下任選一種：把說明複製給 \
-            AI 讓它幫你接，或自己跑指令。
+            操作手冊（skill）已裝在 ~/.atelio/skills/atelio/。最後一步：把它接進你的 \
+            AI 的 skill 搜尋目錄，主 AI 才讀得到。
             """)
             .font(scale.font(.callout))
             .foregroundStyle(.secondary)
@@ -98,8 +99,16 @@ struct HelpView: View {
 
             CodeBlock(label: "複製給 AI（貼進任何 AI 對話）",
                       code: Self.aiSetupPrompt, scale: scale)
-            CodeBlock(label: "或自己接（在終端執行）",
-                      code: Self.diySymlinkCommands, scale: scale)
+
+            Text("""
+            或手動接：把 ~/.atelio/skills/atelio 用 symlink 連結（建議，App 更新會 \
+            自動跟上）或複製到你的 AI 的 skill 目錄。常見位置 Claude Code 在 \
+            ~/.claude/skills/、Codex / Gemini 在 ~/.agents/skills/，實際依你的 CLI 而定。
+            """)
+            .font(scale.font(.callout))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .textSelection(.enabled)
         }
     }
 
@@ -112,14 +121,6 @@ struct HelpView: View {
     - Claude Code 通常是 ~/.claude/skills/
     - Codex / Gemini 通常是 ~/.agents/skills/
     依你實際的 skill 目錄調整。建議用 symlink（ln -s），這樣 Atelio 之後更新你會自動拿到最新版。接好後讀 ~/.atelio/skills/atelio/SKILL.md 確認可存取。
-    """
-
-    /// 自己接的 symlink 指令（CC 路徑較確定，Codex/Gemini 共用 ~/.agents/ 為推測）。
-    private static let diySymlinkCommands = """
-    # Claude Code
-    ln -sf ~/.atelio/skills/atelio ~/.claude/skills/atelio
-    # Codex / Gemini（共用 ~/.agents/）
-    ln -sf ~/.atelio/skills/atelio ~/.agents/skills/atelio
     """
 
     @ViewBuilder
