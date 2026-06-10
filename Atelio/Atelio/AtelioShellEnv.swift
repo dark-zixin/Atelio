@@ -118,15 +118,22 @@ enum AtelioShellEnv {
     private static func performFetch(signature: [String: TimeInterval]) -> String? {
         let fetched = fetchLoginPath()
         lock.lock()
-        if let fetched {
+        defer { lock.unlock() }
+
+        guard let fetched else {
+            lastFailureAt = Date()
+            return cache?.path
+        }
+        // 防併發覆寫：若 rc 檔在本次撈取期間又變動（簽章已不符當前狀態），本次結果已過時，
+        // 不寫入 cache，避免「較早開始、較晚完成」的撈取覆寫較新的結果（冷啟動同步撈與
+        // 背景撈可能並行，兩者皆會走到這裡）。過時時不污染 cache，下次 resolvedPath 會以
+        // 最新簽章重撈。
+        if currentSignature() == signature {
             cache = Cache(path: fetched, signature: signature, fetchedAt: Date())
             lastFailureAt = nil
-        } else {
-            lastFailureAt = Date()
+            return fetched
         }
-        let result = fetched ?? cache?.path
-        lock.unlock()
-        return result
+        return cache?.path ?? fetched
     }
 
     /// 跑 `login + interactive` shell 撈 `$PATH`。stderr / stdin 皆導向 null。
@@ -233,6 +240,8 @@ enum AtelioShellEnv {
     private static var watchedFiles: [URL] {
         let names = [".zshrc", ".zprofile", ".zshenv", ".zlogin"]
         var urls = names.map { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent($0) }
+        // ZDOTDIR 取自 App process 環境；若使用者改在 ~/.zshenv 內 export ZDOTDIR，App
+        // （launchd 啟動）讀不到，該目錄下的 rc 變動不會即時失效 —— 此情況改由 cacheTTL 兜底。
         if let zdotdir = ProcessInfo.processInfo.environment["ZDOTDIR"], !zdotdir.isEmpty {
             let base = URL(fileURLWithPath: zdotdir)
             urls += names.map { base.appendingPathComponent($0) }
