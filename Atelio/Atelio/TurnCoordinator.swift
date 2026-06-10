@@ -11,7 +11,7 @@ class TurnCoordinator {
     // MARK: - 型別
 
     enum TurnPhase { case idle, working, draining }
-    enum TurnCompletionReason { case hookTurnEnded, quietWindowMet, processExited }
+    enum TurnCompletionReason { case hookTurnEnded, quietWindowMet, processExited, aborted }
 
     // MARK: - 公開狀態
 
@@ -30,10 +30,13 @@ class TurnCoordinator {
     private var stableSince = Date()
     private var timer: DispatchSourceTimer?
     private var timerIntervalMs = 200
-    private var completionSemaphore: DispatchSemaphore?
+    /// 等待本輪完成的所有 waiter（dispatch 一個 + 可能並行的多個 wait）。
+    /// complete 時全部 signal——覆寫單一欄位會讓先到的 waiter 空等到 timeout。
+    private var completionSemaphores: [DispatchSemaphore] = []
     private var wasInAltScreen = false
     private var turnCounter: Int = 0
     private(set) var currentMarker: String?
+
 
     // MARK: - 初始化
 
@@ -49,7 +52,14 @@ class TurnCoordinator {
     func beginTurn(withMarker: Bool = true) -> DispatchSemaphore {
         stopTimer()
         turnCounter += 1
-        currentMarker = withMarker ? "<!-- ATELIO-T-\(turnCounter) -->" : nil
+        // Marker 隨機成分（8 hex）每 turn 重生，切片找「第一次出現」才不會命中畫面上
+        // 殘留的舊 marker 文字：
+        // - 跨 session：resume 類 worker（codex resume / claude --continue）會重繪舊對話
+        //   （含舊 marker），而 turnCounter 每個實例從 1 重起，固定格式必同名碰撞
+        // - 同 session：固定 nonce 在 turn 1 後即露出於畫面、counter 可預測，轉發含
+        //   marker 的文字等場景可偽造出未來 marker；每 turn 重生使其無法預測
+        let nonce = String(UUID().uuidString.prefix(8))
+        currentMarker = withMarker ? "<!-- ATELIO-\(nonce)-T-\(turnCounter) -->" : nil
         phase = .working
         hookSeen = false
         completed = false
@@ -61,7 +71,7 @@ class TurnCoordinator {
         preDispatchHash = lastHash
         stableSince = Date()
         let sem = DispatchSemaphore(value: 0)
-        completionSemaphore = sem
+        completionSemaphores = [sem]
         startTimer(intervalMs: 200)
         let markerDesc = currentMarker ?? "none"
         appendLog("beginTurn preHash=\(preDispatchHash.prefix(16)) marker=\(markerDesc)")
@@ -69,10 +79,11 @@ class TurnCoordinator {
     }
 
     /// 取得目前 turn 的 semaphore（給 wait 使用）
+    /// 加入 waiter 清單而非覆寫：先前的 waiter（如阻塞中的 dispatch）仍會在完成時被 signal
     func waitSemaphore() -> DispatchSemaphore? {
         guard phase != .idle else { return nil }
         let sem = DispatchSemaphore(value: 0)
-        completionSemaphore = sem
+        completionSemaphores.append(sem)
         return sem
     }
 
@@ -95,6 +106,21 @@ class TurnCoordinator {
 
     func handleProcessExit() {
         complete(.processExited)
+    }
+
+    /// 強制結束目前 turn（reset 原語）：phase 回 idle、signal 所有 waiter。
+    /// 用於 turn 卡住（取消 approval 後等 fallback、畫面無變化等）時的逃生門。
+    func abortTurn() {
+        guard phase != .idle else { return }
+        appendLog("abortTurn_requested")
+        complete(.aborted)
+    }
+
+    /// 畫面最近一次變化距今的秒數（reset 穩定閘用）。
+    /// timer 只在 working/draining 期間運行，idle 時數值凍結——
+    /// 呼叫端（handleReset）僅在 phase 非 idle 時讀取，此時 tick 每 100-200ms 更新中。
+    var secondsSinceScreenChange: TimeInterval {
+        Date().timeIntervalSince(stableSince)
     }
 
     // MARK: - Timer
@@ -186,9 +212,9 @@ class TurnCoordinator {
         completed = true
         completionReason = reason
         stopTimer()
-        let sem = completionSemaphore
-        completionSemaphore = nil
-        sem?.signal()
+        let sems = completionSemaphores
+        completionSemaphores = []
+        sems.forEach { $0.signal() }
         appendLog("complete_\(reason)")
     }
 

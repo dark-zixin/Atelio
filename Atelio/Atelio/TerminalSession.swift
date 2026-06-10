@@ -225,8 +225,11 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
             payload = text
         }
         // Bracketed paste mode 包裝：讓 AI CLI 把 input 當 paste 處理，
-        // 避免 `!` 等字元觸發熱鍵（例如 Gemini 會把 `!` 當 shell mode trigger）
-        let wrapped = "\u{001B}[200~\(payload)\u{001B}[201~"
+        // 避免 `!` 等字元觸發熱鍵（例如 Gemini 會把 `!` 當 shell mode trigger）。
+        // payload 內若含 paste 終止序列（ESC[201~）會提前結束 paste 模式，
+        // 後續內容變成裸鍵入（含 \r 會直接觸發送出），故先濾除。
+        let sanitized = payload.replacingOccurrences(of: "\u{001B}[201~", with: "")
+        let wrapped = "\u{001B}[200~\(sanitized)\u{001B}[201~"
         AtelioConfig.debugLog("dispatch_payload", [
             "name": name,
             "marker": (coordinator.currentMarker ?? "nil"),
@@ -388,6 +391,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
             name: name,
             purpose: purpose,
             isRunning: isRunning,
+            status: status.rawValue,
             pid: pid != 0 ? pid : nil,
             workingDirectory: workingDirectory,
             createdAt: Self.dateFormatter.string(from: createdAt)

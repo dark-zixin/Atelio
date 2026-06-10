@@ -14,6 +14,7 @@ public struct IPCRequest: Codable {
         case notify
         case peek
         case sendKeys = "send-keys"
+        case reset
     }
 
     public let command: Command
@@ -95,6 +96,9 @@ public enum IPCResult {
 
     public static let turnInProgress = "turn_in_progress"
     public static let turnInProgressHint = "The session is still working. Use wait to continue waiting for completion, or screen to check current output. Output is omitted to save tokens."
+
+    public static let turnAborted = "turn_aborted"
+    public static let turnAbortedHint = "The turn was forcibly ended by a reset command. The previous task did not finish normally — the output may be incomplete. The session is idle and ready for a new dispatch."
 
     // 非 dispatch/wait 的一般成功
     public static let ok = "ok"

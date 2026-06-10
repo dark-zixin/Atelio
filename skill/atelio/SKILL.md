@@ -3,7 +3,7 @@ name: atelio
 description: 透過 Atelio 操作多個 AI CLI worker（任意 AI CLI，如 Claude Code / Codex / Gemini）— 開 session、派任務、判讀完成狀態、處理 approval、並行調度。當你要當 PM 協調多個 AI CLI 平行做事、或把任務分派給其他 AI worker 時使用。
 argument-hint: "[任務描述，如：開 codex 在 /repo 做事]"
 ---
-<!-- version: 0.1.0 -->
+<!-- version: 0.2.0 -->
 
 # Atelio — 多 AI CLI worker 操作手冊
 
@@ -72,6 +72,14 @@ argument-hint: "[任務描述，如：開 codex 在 /repo 做事]"
 - key（大小寫不敏感）：`enter`、`esc`、`tab`、`space`、`bspace`（亦可寫 `return`/`escape`/`backspace`）、`up`/`down`/`left`/`right`、`c-<字母>`（Ctrl，如 `c-c`）、或任意**單字元**（如 `y`/`1`）。
 - 不包 bracketed paste、不補 Enter。**不帶 output**（回傳只有操作確認），如需確認畫面結果用 `screen`。主要用於 approval 選單（見 approval 工作流）。
 
+### reset — 強制結束卡住的 turn
+```
+~/.atelio/bin/atelio reset <name>
+```
+- 把卡在工作狀態的 session 強制拉回 idle（之後才能再 dispatch）。被中斷的 turn 未正常完成；若有阻塞中的 dispatch/wait，它們會收到 `turn_aborted`。
+- **只在確認卡住時使用**：dispatch/wait 反覆回 `turn_in_progress`/`deadline_reached`，但 `screen` 顯示 AI 其實已停止輸出（如取消 approval 之後）。AI 仍在正常工作時不要 reset。
+- **畫面仍在變化時 server 會拒絕 reset**（回 `turn_in_progress`），表示 worker 可能仍在工作。要中止它先 `send-keys`（`esc` 或 `c-c`）讓輸出停止再 reset；worker 完全無回應時改用 `close`。
+
 ### close — 關 session
 ```
 ~/.atelio/bin/atelio close <name>
@@ -80,7 +88,9 @@ argument-hint: "[任務描述，如：開 codex 在 /repo 做事]"
 - session 作業中時第一次 close 會要求二次確認、回傳裡帶確認 key；用 `--confirm <key>` 再 close 一次。
 - 關閉後 name 釋放，可同名再開。
 
-## result 判讀（dispatch / wait 回傳）
+## result 判讀（dispatch / wait / reset 回傳）
+
+result 值印在 **stderr 的 `atelio-result: <值>` 一行**（stdout 是 output 內容），以此行為判讀依據：
 
 | result | 意義 | 你該做 |
 |--------|------|--------|
@@ -88,6 +98,8 @@ argument-hint: "[任務描述，如：開 codex 在 /repo 做事]"
 | `quiet_window_met` | 畫面穩定（啟發式，**不等於任務完成**） | 看 output 判斷是否真的好了；沒好就 `wait` 或 `screen` |
 | `turn_in_progress` | timeout 時 session 有 hook 記錄且 turn 仍未結束（不帶 output） | `wait` 繼續等，或 `screen` 看進度 |
 | `deadline_reached` | timeout 時 session 無 hook 記錄，狀態不確定 | 看 output 判斷是否卡住；視情況再 `wait` |
+| `turn_aborted` | turn 被 `reset` 強制結束，任務未正常完成 | 看 output 判斷進度，需要的話重新 dispatch |
+| `ok` | reset 成功（turn 已強制結束，或本就 idle） | session 已可重新 dispatch |
 | `process_exited` | session 裡的程式結束了 | 先 `close` 釋放名稱，需要的話再重新 `open` |
 | `session_closed` | session 被關了 | 不再重試，重新 `open` |
 | `owner_mismatch` | 你不是 owner | 只能 `screen` |

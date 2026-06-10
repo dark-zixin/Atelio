@@ -26,6 +26,10 @@ struct DispatchCommand: ParsableCommand {
             print(output)
         }
 
+        // 統一狀態行（stderr）：result 值是判讀依據（hook_turn_ended ≠ quiet_window_met），
+        // 不印的話呼叫端（AI）無法區分完成訊號的強弱
+        fputs("atelio-result: \(response.result)\n", stderr)
+
         // 根據 result 決定 exit code
         switch response.result {
         case IPCResult.quietWindowMet, IPCResult.hookTurnEnded:
@@ -35,7 +39,7 @@ struct DispatchCommand: ParsableCommand {
             fputs(response.resultHint, stderr)
             fputs("\n", stderr)
             throw ExitCode(1)
-        case IPCResult.deadlineReached:
+        case IPCResult.deadlineReached, IPCResult.turnAborted:
             fputs("（\(response.resultHint)）\n", stderr)
             throw ExitCode(1)
         default:

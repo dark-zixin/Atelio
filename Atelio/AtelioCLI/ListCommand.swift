@@ -22,7 +22,9 @@ struct ListCommand: ParsableCommand {
                     print("目前沒有任何 session")
                 } else {
                     for info in infos {
-                        let status = info.isRunning ? "running" : "stopped"
+                        // 優先用 server 計算的即時狀態（busy/idle/unowned/exited），
+                        // 舊版 server 無此欄位時退回 isRunning 粗分類
+                        let status = info.status ?? (info.isRunning ? "running" : "stopped")
                         let created = info.createdAt ?? "unknown"
                         print("\(info.name)  purpose: \(info.purpose)  status: \(status)  created: \(created)")
                     }

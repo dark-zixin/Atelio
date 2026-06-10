@@ -15,6 +15,10 @@ class IPCServer {
     private var serverFd: Int32 = -1
     private var isRunning = false
 
+    /// reset 穩定閘閾值（秒）：畫面靜止需達此秒數才允許 reset。
+    /// 取 5 秒對齊非 hook session 的 quiet window（codex review 建議 5-10 秒區間）。
+    private static let resetQuietThreshold: TimeInterval = 5
+
     init(manager: TerminalManager, dispatchActivity: DispatchActivity) {
         self.manager = manager
         self.dispatchActivity = dispatchActivity
@@ -182,6 +186,8 @@ class IPCServer {
             return handlePeek(request)
         case .sendKeys:
             return handleSendKeys(request)
+        case .reset:
+            return handleReset(request)
         @unknown default:
             // IPCRequest.Command 定義在 AtelioShared module，跨 module 的 enum 被
             // 視為未來可能新增 case；補此分支讓未知指令回報錯誤而非編譯失敗
@@ -336,6 +342,60 @@ class IPCServer {
         return response
     }
 
+    /// 強制結束卡住的 turn，讓 session 回到 idle（逃生門）。
+    /// 檢查順序對齊 dispatch/send-keys：sessionNotFound → isRunning → verifyOwner。
+    /// 已是 idle 時為 no-op，直接回 ok。
+    private func handleReset(_ request: IPCRequest) -> IPCResponse {
+        let semaphore = DispatchSemaphore(value: 0)
+        var response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "未知錯誤")
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                response = IPCResult.response(IPCResult.internalError, IPCResult.internalErrorHint, message: "Server 已關閉")
+                semaphore.signal(); return
+            }
+            guard let session = self.manager.sessions[request.name] else {
+                response = IPCResult.response(IPCResult.sessionNotFound, IPCResult.sessionNotFoundHint,
+                                              message: "找不到 session '\(request.name)'")
+                semaphore.signal(); return
+            }
+            guard session.isRunning else {
+                response = IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint,
+                                              message: "session '\(request.name)' 的 process 已結束")
+                semaphore.signal(); return
+            }
+            if let err = self.verifyOwner(session: session, callerPID: request.callerPID, command: "reset") {
+                response = err; semaphore.signal(); return
+            }
+            guard session.coordinator.phase != .idle else {
+                response = IPCResult.response(IPCResult.ok, IPCResult.okHint,
+                                              message: "session '\(request.name)' 已是 idle，無需 reset")
+                semaphore.signal(); return
+            }
+            // 穩定閘：畫面最近仍在變 → worker 可能仍在工作，拒絕 reset。
+            // 把 SKILL 的使用規範（畫面停止才能 reset）升級為 server 不變量，
+            // 不依賴 caller（AI）自律。閾值 5 秒對齊非 hook quiet window；
+            // 合法 reset 場景（ESC 取消後停在 prompt）天然靜止、等待零成本。
+            // 不提供 force 跳過：閘會擋的場景（worker 活躍、或掛死但動畫仍跑）
+            // 都不是 reset 能救的，繞過只放大誤用面。
+            let quietFor = session.coordinator.secondsSinceScreenChange
+            if quietFor < Self.resetQuietThreshold {
+                response = IPCResult.response(IPCResult.turnInProgress, IPCResult.turnInProgressHint,
+                    message: "畫面最近 \(Int(Self.resetQuietThreshold)) 秒內仍在變化，worker 可能仍在工作，已拒絕 reset。"
+                        + "若要中止 worker，先用 send-keys（esc 或 c-c）讓畫面停止再 reset；"
+                        + "若 worker 已無回應，改用 close 或請使用者在 UI 介入。")
+                semaphore.signal(); return
+            }
+            session.coordinator.abortTurn()
+            response = IPCResult.response(IPCResult.ok, IPCResult.okHint,
+                                          message: "已強制結束 turn，session '\(request.name)' 回到 idle")
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+        return response
+    }
+
     private func handleNotify(_ request: IPCRequest) -> IPCResponse {
         let event = request.text ?? "unknown"
         let sessionName = request.name
@@ -447,6 +507,8 @@ class IPCServer {
                     response = IPCResult.response(IPCResult.hookTurnEnded, IPCResult.hookTurnEndedHint, output: output)
                 case .processExited:
                     response = IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint, output: output)
+                case .aborted:
+                    response = IPCResult.response(IPCResult.turnAborted, IPCResult.turnAbortedHint, output: output)
                 default:
                     response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
                 }
@@ -602,6 +664,8 @@ class IPCServer {
                     response = IPCResult.response(IPCResult.hookTurnEnded, IPCResult.hookTurnEndedHint, output: output)
                 case .processExited:
                     response = IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint, output: output)
+                case .aborted:
+                    response = IPCResult.response(IPCResult.turnAborted, IPCResult.turnAbortedHint, output: output)
                 default:
                     response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
                 }

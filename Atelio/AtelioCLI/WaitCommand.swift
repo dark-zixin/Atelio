@@ -22,6 +22,9 @@ struct WaitCommand: ParsableCommand {
             print(output)
         }
 
+        // 統一狀態行（stderr）：與 dispatch 相同，讓呼叫端程式化判讀 result 值
+        fputs("atelio-result: \(response.result)\n", stderr)
+
         switch response.result {
         case IPCResult.quietWindowMet, IPCResult.hookTurnEnded:
             break  // 完成（hash 穩定或 hook 確認）
@@ -29,7 +32,7 @@ struct WaitCommand: ParsableCommand {
             fputs(response.resultHint, stderr)
             fputs("\n", stderr)
             throw ExitCode(1)
-        case IPCResult.deadlineReached:
+        case IPCResult.deadlineReached, IPCResult.turnAborted:
             fputs("（\(response.resultHint)）\n", stderr)
             throw ExitCode(1)
         default:
