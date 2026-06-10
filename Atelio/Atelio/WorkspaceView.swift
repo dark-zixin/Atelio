@@ -103,7 +103,6 @@ struct WorkspaceView: View {
                     emptyLayoutState
                 } else {
                     ForEach(Array(zip(normalNames, slots)), id: \.0) { name, slot in
-                        let index = normalNames.firstIndex(of: name) ?? 0
                         if let session = manager.sessions[name] {
                             let slotWidth = slot.width * geo.size.width - 2
                             let slotHeight = slot.height * geo.size.height - 2

@@ -182,6 +182,15 @@ class IPCServer {
             return handlePeek(request)
         case .sendKeys:
             return handleSendKeys(request)
+        @unknown default:
+            // IPCRequest.Command 定義在 AtelioShared module，跨 module 的 enum 被
+            // 視為未來可能新增 case；補此分支讓未知指令回報錯誤而非編譯失敗
+            // （Swift 6 語言模式下缺這分支會是 error）。
+            return IPCResult.response(
+                IPCResult.invalidRequest,
+                IPCResult.invalidRequestHint,
+                message: "未知或不支援的指令"
+            )
         }
     }
 
