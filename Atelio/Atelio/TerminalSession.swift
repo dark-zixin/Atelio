@@ -44,7 +44,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     }()
 
     init(name: String, purpose: String, directory: String, command: String) {
-        AtelioConfig.debugLog("session_init_start", [
+        AtelioLog.trace("session_init_start", [
             "name": name,
             "command": command,
             "directory": directory
@@ -55,7 +55,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         self.workingDirectory = directory
         self.terminalView = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
         self.transcriptAccumulator = TranscriptAccumulator()
-        self.coordinator = TurnCoordinator(terminalView: terminalView, transcriptAccumulator: transcriptAccumulator)
+        self.coordinator = TurnCoordinator(terminalView: terminalView, transcriptAccumulator: transcriptAccumulator, sessionName: name)
 
         super.init()
 
@@ -89,9 +89,9 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         if let resolvedPath {
             env.removeAll { $0.hasPrefix("PATH=") }
             env.append("PATH=\(resolvedPath)")
-            AtelioConfig.debugLog("path_overridden", ["path": resolvedPath])
+            AtelioLog.trace("path_overridden", ["path": resolvedPath])
         } else {
-            AtelioConfig.debugLog("path_not_overridden", [:])
+            AtelioLog.ops("path_not_overridden", [:])
         }
         env.append("CLAUDE_CODE_NO_FLICKER=1")
         env.append("ATELIO_SESSION=\(name)")
@@ -100,7 +100,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         if !directory.isEmpty {
             let escapedDir = directory.replacingOccurrences(of: "'", with: "'\\''")
             let argString = "[-c, cd '\(escapedDir)' && \(command)]"
-            AtelioConfig.debugLog("session_about_to_startprocess", [
+            AtelioLog.trace("session_about_to_startprocess", [
                 "name": name,
                 "exe": "/bin/zsh",
                 "args": argString
@@ -112,7 +112,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
             )
         } else {
             let argString = "[-c, \(command)]"
-            AtelioConfig.debugLog("session_about_to_startprocess", [
+            AtelioLog.trace("session_about_to_startprocess", [
                 "name": name,
                 "exe": "/bin/zsh",
                 "args": argString
@@ -123,9 +123,9 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
                 environment: env
             )
         }
-        AtelioConfig.debugLog("session_startprocess_called", ["name": name])
+        AtelioLog.trace("session_startprocess_called", ["name": name])
         isRunning = true
-        AtelioConfig.debugLog("session_init_done", ["name": name])
+        AtelioLog.trace("session_init_done", ["name": name])
     }
 
     deinit {
@@ -185,20 +185,20 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     /// 失敗時分辨原因寫 debug log（排查偶發不切片時有用）
     private func currentForegroundAiCli() -> String? {
         guard let fd = terminalView.process?.childfd, fd >= 0 else {
-            AtelioConfig.debugLog("dispatch_peek_fail", ["name": name, "reason": "no_childfd"])
+            AtelioLog.ops("dispatch_peek_fail", ["name": name, "reason": "no_childfd"])
             return nil
         }
         let pgrp = tcgetpgrp(fd)
         guard pgrp > 0 else {
-            AtelioConfig.debugLog("dispatch_peek_fail", ["name": name, "reason": "tcgetpgrp_fail", "errno": errno])
+            AtelioLog.ops("dispatch_peek_fail", ["name": name, "reason": "tcgetpgrp_fail", "errno": errno])
             return nil
         }
         guard let argv = ProcessInspector.argv(for: pgrp) else {
-            AtelioConfig.debugLog("dispatch_peek_fail", ["name": name, "reason": "argv_unavailable", "pgrp": pgrp])
+            AtelioLog.ops("dispatch_peek_fail", ["name": name, "reason": "argv_unavailable", "pgrp": pgrp])
             return nil
         }
         guard !argv.isEmpty else {
-            AtelioConfig.debugLog("dispatch_peek_fail", ["name": name, "reason": "empty_argv", "pgrp": pgrp])
+            AtelioLog.ops("dispatch_peek_fail", ["name": name, "reason": "empty_argv", "pgrp": pgrp])
             return nil
         }
         return AtelioConfig.matchAiCli(argv: argv)
@@ -211,7 +211,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
 
         // Runtime 動態判斷：peek foreground argv，決定此次是否注入 marker
         let aiCliHit = currentForegroundAiCli()
-        AtelioConfig.debugLog("dispatch_argv_check", [
+        AtelioLog.trace("dispatch_argv_check", [
             "name": name,
             "text": text,
             "hit": aiCliHit ?? "MISS"
@@ -230,7 +230,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         // 後續內容變成裸鍵入（含 \r 會直接觸發送出），故先濾除。
         let sanitized = payload.replacingOccurrences(of: "\u{001B}[201~", with: "")
         let wrapped = "\u{001B}[200~\(sanitized)\u{001B}[201~"
-        AtelioConfig.debugLog("dispatch_payload", [
+        AtelioLog.trace("dispatch_payload", [
             "name": name,
             "marker": (coordinator.currentMarker ?? "nil"),
             "payload": payload
@@ -239,7 +239,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) { [weak self] in
             self?.terminalView.send(txt: "\r")
         }
-        AtelioConfig.debugLog("dispatch_sent", ["name": name])
+        AtelioLog.trace("dispatch_sent", ["name": name])
         return sem
     }
 
@@ -251,7 +251,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     func sendRaw(bytes: String, originalKey: String) {
         guard isRunning else { return }
         let hex = bytes.utf8.map { String(format: "%02X", $0) }.joined(separator: " ")
-        AtelioConfig.debugLog("send_keys", [
+        AtelioLog.trace("send_keys", [
             "name": name,
             "key": originalKey,
             "hex": hex
@@ -333,14 +333,14 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     /// - applyMarker: true 時套用 marker 切片（dispatch/wait 用），false 時整頁（screen 用）
     ///   實際切片與否取決於 `coordinator.currentMarker` 是否有值（該輪 dispatch 有注入 marker）
     private func readRaw(applyMarker: Bool) -> String {
-        AtelioConfig.debugLog("read_raw", [
+        AtelioLog.trace("read_raw", [
             "name": name,
             "applyMarker": applyMarker,
             "currentMarker": coordinator.currentMarker ?? "nil"
         ])
         let viewport = readTerminalViewport()
         let marker = applyMarker ? coordinator.currentMarker : nil
-        AtelioConfig.debugLog("read_marker_decided", [
+        AtelioLog.trace("read_marker_decided", [
             "name": name,
             "marker": (marker ?? "nil")
         ])
@@ -353,7 +353,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
             let raw = String(data: terminalView.getTerminal().getBufferAsData(), encoding: .utf8) ?? ""
             result = truncateIfNeeded(TerminalDenoise.clean(raw, marker: marker))
         }
-        AtelioConfig.debugLog("read_done", [
+        AtelioLog.trace("read_done", [
             "name": name,
             "outputSize": result.count
         ])
@@ -467,7 +467,7 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     // MARK: - LocalProcessTerminalViewDelegate
 
     func processTerminated(source: TerminalView, exitCode: Int32?) {
-        AtelioConfig.debugLog("session_process_terminated", [
+        AtelioLog.ops("session_process_terminated", [
             "name": self.name,
             "exitCode": exitCode ?? -999
         ])

@@ -33,45 +33,12 @@ enum AtelioConfig {
     /// 寫入請走 `setSkillNotifiedVersion(_:)` 以同步持久化。
     private(set) static var skillNotifiedVersion: String?
 
-    // MARK: - Debug Log
-
-    /// 共用 debug log：寫到 ~/.atelio/debug.log 與 NSLog
-    /// 靜默失敗，不拋例外
-    ///
-    /// 保留內嵌 `createDirectory` 作為 defensive：debugLog 可能在
-    /// `AtelioPaths.ensureRoot()` 之前或失敗的情境下被呼叫（例如想記錄
-    /// bootstrap 本身的失敗），必須自帶 mkdir 才能保證合約。其他寫入點
-    /// （config/hook/font persist）統一相信 bootstrap，不再自建目錄。
-    static func debugLog(_ event: String, _ data: [String: Any] = [:]) {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
-        var parts = ["\(timestamp)", "event=\(event)"]
-        for (key, value) in data.sorted(by: { $0.key < $1.key }) {
-            let str = "\(value)".replacingOccurrences(of: "\n", with: "\\n")
-            parts.append("\(key)=\(str)")
-        }
-        let line = parts.joined(separator: " ") + "\n"
-
-        try? FileManager.default.createDirectory(at: AtelioPaths.root, withIntermediateDirectories: true)
-        let logFile = AtelioPaths.debugLogPath
-
-        if let handle = try? FileHandle(forWritingTo: logFile) {
-            handle.seekToEndOfFile()
-            handle.write(Data(line.utf8))
-            handle.closeFile()
-        } else {
-            try? line.write(to: logFile, atomically: true, encoding: .utf8)
-        }
-
-        // 同時印到 Console
-        NSLog("[Atelio] %@ %@", event, data.description)
-    }
-
     /// App 啟動時呼叫：確保檔案存在 + 讀取合併
     static func load() {
-        debugLog("config_load_start")
+        AtelioLog.trace("config_load_start")
         writeDefaultIfMissing()
         mergeFromFile()
-        debugLog("config_load_done", [
+        AtelioLog.trace("config_load_done", [
             "whitelist": aiCliWhitelist.sorted().joined(separator: ","),
             "fontSize": fontSize
         ])
@@ -85,7 +52,7 @@ enum AtelioConfig {
         let path = AtelioPaths.configPath
         let fm = FileManager.default
         guard !fm.fileExists(atPath: path.path) else {
-            debugLog("config_already_exists", ["path": path.path])
+            AtelioLog.trace("config_already_exists", ["path": path.path])
             return
         }
 
@@ -98,26 +65,24 @@ enum AtelioConfig {
 
         """
         try? template.write(to: path, atomically: true, encoding: .utf8)
-        debugLog("config_written", ["path": path.path])
+        AtelioLog.trace("config_written", ["path": path.path])
     }
 
-    /// 從 config 檔讀取 additional_ai_clis 與 font_size
+    /// 從 config 檔讀取 additional_ai_clis、font_size、trace_log 等欄位
     ///
     /// 採逐欄位容錯：單一欄位型別錯誤不影響其他欄位；
     /// 只有整個 JSON 無法 parse 成 object 時才全回預設。
     /// 讀取失敗或格式錯誤 → log 並保持內建預設。
     private static func mergeFromFile() {
         guard let data = try? Data(contentsOf: AtelioPaths.configPath) else {
-            NSLog("[AtelioConfig] 無法讀 config 檔，使用內建白名單")
-            debugLog("config_read_fail")
+            AtelioLog.ops("config_read_fail")
             return
         }
-        debugLog("config_file_read", ["size": data.count])
+        AtelioLog.trace("config_file_read", ["size": data.count])
 
         guard let obj = try? JSONSerialization.jsonObject(with: data),
               let dict = obj as? [String: Any] else {
-            NSLog("[AtelioConfig] config 非 JSON object，保留內建預設")
-            debugLog("config_parse_fail")
+            AtelioLog.ops("config_parse_fail")
             return
         }
 
@@ -125,33 +90,42 @@ enum AtelioConfig {
         if let arr = dict["additional_ai_clis"] as? [String] {
             let userAdded = Set(arr)
             aiCliWhitelist = defaultAiClis.union(userAdded)
-            debugLog("config_whitelist_loaded", ["user_added": userAdded.count])
+            AtelioLog.trace("config_whitelist_loaded", ["user_added": userAdded.count])
         } else if dict["additional_ai_clis"] != nil {
-            debugLog("config_whitelist_type_mismatch", [:])
+            AtelioLog.ops("config_whitelist_type_mismatch", [:])
         }
 
         // 字體大小：接受 Double 或 Int；型別錯時保留預設並 log
         if let raw = dict["font_size"] as? Double {
             let clamped = clampFontSize(CGFloat(raw))
             fontSize = clamped
-            debugLog("config_font_size_loaded", ["raw": raw, "clamped": clamped])
+            AtelioLog.trace("config_font_size_loaded", ["raw": raw, "clamped": clamped])
         } else if let raw = dict["font_size"] as? Int {
             let clamped = clampFontSize(CGFloat(raw))
             fontSize = clamped
-            debugLog("config_font_size_loaded_int", ["raw": raw, "clamped": clamped])
+            AtelioLog.trace("config_font_size_loaded_int", ["raw": raw, "clamped": clamped])
         } else if dict["font_size"] != nil {
-            debugLog("config_font_size_type_mismatch", [:])
+            AtelioLog.ops("config_font_size_type_mismatch", [:])
         }
 
         // skill 彈窗已通知版本：字串型別才套用，錯的話保留 nil 並 log
         if let v = dict["skill_notified_version"] as? String {
             skillNotifiedVersion = v
-            debugLog("config_skill_notified_version_loaded", ["version": v])
+            AtelioLog.trace("config_skill_notified_version_loaded", ["version": v])
         } else if dict["skill_notified_version"] != nil {
-            debugLog("config_skill_notified_version_type_mismatch", [:])
+            AtelioLog.ops("config_skill_notified_version_type_mismatch", [:])
         }
 
-        debugLog("config_parse_ok", [:])
+        // trace log 開關：Bool 型別才覆寫 build 預設（Debug 開 / Release 關），
+        // 錯的話保留預設並 log。缺席 = 用 build 預設
+        if let v = dict["trace_log"] as? Bool {
+            AtelioLog.setTraceEnabled(v)
+            AtelioLog.trace("config_trace_log_loaded", ["enabled": v])
+        } else if dict["trace_log"] != nil {
+            AtelioLog.ops("config_trace_log_type_mismatch", [:])
+        }
+
+        AtelioLog.trace("config_parse_ok", [:])
     }
 
     /// 判斷 basename 是否在 AI CLI 白名單中（供 foreground process 動態判斷使用）
@@ -198,7 +172,7 @@ enum AtelioConfig {
         let clamped = clampFontSize(value)
         // clamp 後與當前相同 → no-op：避免白寫檔、空廣播、observer 白跑一輪
         guard clamped != fontSize else {
-            debugLog("font_size_noop", ["requested": value, "current": fontSize])
+            AtelioLog.trace("font_size_noop", ["requested": value, "current": fontSize])
             return
         }
 
@@ -208,7 +182,7 @@ enum AtelioConfig {
 
         NotificationCenter.default.post(name: .atelioFontSizeChanged, object: nil)
 
-        debugLog("font_size_changed", [
+        AtelioLog.trace("font_size_changed", [
             "value": clamped,
             "requested": value
         ])
@@ -235,7 +209,7 @@ enum AtelioConfig {
         mergeWriteConfig(reason: "skill_notified_version") {
             $0["skill_notified_version"] = version
         }
-        debugLog("skill_notified_version_set", ["version": version])
+        AtelioLog.trace("skill_notified_version_set", ["version": version])
     }
 
     // MARK: - Config 合併寫檔
@@ -262,7 +236,7 @@ enum AtelioConfig {
             guard let data = try? Data(contentsOf: path),
                   let obj = try? JSONSerialization.jsonObject(with: data),
                   let dict = obj as? [String: Any] else {
-                debugLog("config_write_skipped_parse_fail", [
+                AtelioLog.ops("config_write_skipped_parse_fail", [
                     "path": path.path,
                     "reason": reason
                 ])
@@ -276,13 +250,13 @@ enum AtelioConfig {
         // 寫回（pretty printed，穩定 key 排序）
         let options: JSONSerialization.WritingOptions = [.prettyPrinted, .sortedKeys]
         guard let newData = try? JSONSerialization.data(withJSONObject: json, options: options) else {
-            debugLog("config_serialize_fail", ["reason": reason])
+            AtelioLog.ops("config_serialize_fail", ["reason": reason])
             return false
         }
 
         do {
             try newData.write(to: path, options: [.atomic])
-            debugLog("config_write_ok", [
+            AtelioLog.trace("config_write_ok", [
                 "path": path.path,
                 "size": newData.count,
                 "merged_existing": fileExists,
@@ -290,7 +264,7 @@ enum AtelioConfig {
             ])
             return true
         } catch {
-            debugLog("config_write_fail", [
+            AtelioLog.ops("config_write_fail", [
                 "path": path.path,
                 "error": error.localizedDescription,
                 "reason": reason

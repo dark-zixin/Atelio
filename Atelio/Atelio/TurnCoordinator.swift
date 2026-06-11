@@ -1,6 +1,5 @@
 import Foundation
 import SwiftTerm
-import AtelioShared
 
 /// Turn 完成偵測的集中管理器
 ///
@@ -24,6 +23,8 @@ class TurnCoordinator {
 
     private let terminalView: LocalProcessTerminalView
     private let transcriptAccumulator: TranscriptAccumulator
+    /// session 名稱，只用於 log 標記（所有 session 的 turn 事件寫同一份 log，無名字不可分辨）
+    private let sessionName: String
 
     private var preDispatchHash = ""
     private var lastHash = ""
@@ -40,9 +41,10 @@ class TurnCoordinator {
 
     // MARK: - 初始化
 
-    init(terminalView: LocalProcessTerminalView, transcriptAccumulator: TranscriptAccumulator) {
+    init(terminalView: LocalProcessTerminalView, transcriptAccumulator: TranscriptAccumulator, sessionName: String) {
         self.terminalView = terminalView
         self.transcriptAccumulator = transcriptAccumulator
+        self.sessionName = sessionName
     }
 
     // MARK: - Turn 生命週期
@@ -73,8 +75,11 @@ class TurnCoordinator {
         let sem = DispatchSemaphore(value: 0)
         completionSemaphores = [sem]
         startTimer(intervalMs: 200)
-        let markerDesc = currentMarker ?? "none"
-        appendLog("beginTurn preHash=\(preDispatchHash.prefix(16)) marker=\(markerDesc)")
+        AtelioLog.trace("turn_begin", [
+            "name": sessionName,
+            "preHash": preDispatchHash.prefix(16),
+            "marker": currentMarker ?? "none"
+        ])
         return sem
     }
 
@@ -90,18 +95,18 @@ class TurnCoordinator {
     // MARK: - Hook 事件
 
     func handleHookStart() {
-        appendLog("hookStart_received phase=\(phase) hookSeen=\(hookSeen)")
+        AtelioLog.trace("turn_hook_start_received", ["name": sessionName, "phase": phase, "hookSeen": hookSeen])
         guard phase == .working else { return }
         hookSeen = true
-        appendLog("hookStart_accepted")
+        AtelioLog.trace("turn_hook_start_accepted", ["name": sessionName])
     }
 
     func handleHookEnd() {
-        appendLog("hookEnd_received phase=\(phase) hookSeen=\(hookSeen)")
+        AtelioLog.trace("turn_hook_end_received", ["name": sessionName, "phase": phase, "hookSeen": hookSeen])
         guard phase == .working, hookSeen else { return }
         phase = .draining
         stableSince = Date()
-        appendLog("hookEnd_accepted → draining")
+        AtelioLog.trace("turn_hook_end_accepted", ["name": sessionName])
     }
 
     func handleProcessExit() {
@@ -112,7 +117,7 @@ class TurnCoordinator {
     /// 用於 turn 卡住（取消 approval 後等 fallback、畫面無變化等）時的逃生門。
     func abortTurn() {
         guard phase != .idle else { return }
-        appendLog("abortTurn_requested")
+        AtelioLog.ops("turn_abort_requested", ["name": sessionName, "phase": phase])
         complete(.aborted)
     }
 
@@ -189,7 +194,7 @@ class TurnCoordinator {
             } else {
                 // hook session + 沒收到 turn_end：60 秒 fallback
                 if stableMs >= 60000 {
-                    appendLog("fallback_triggered")
+                    AtelioLog.ops("turn_fallback_triggered", ["name": sessionName])
                     complete(.quietWindowMet)
                 }
             }
@@ -207,7 +212,12 @@ class TurnCoordinator {
 
     private func complete(_ reason: TurnCompletionReason) {
         guard phase != .idle else { return }
-        appendLog("complete reason=\(reason) prevPhase=\(phase) hookSeen=\(hookSeen)")
+        AtelioLog.trace("turn_complete", [
+            "name": sessionName,
+            "reason": reason,
+            "prevPhase": phase,
+            "hookSeen": hookSeen
+        ])
         phase = .idle
         completed = true
         completionReason = reason
@@ -215,7 +225,6 @@ class TurnCoordinator {
         let sems = completionSemaphores
         completionSemaphores = []
         sems.forEach { $0.signal() }
-        appendLog("complete_\(reason)")
     }
 
     // MARK: - Terminal buffer 讀取
@@ -236,25 +245,4 @@ class TurnCoordinator {
         return "\(cleaned.hashValue)"
     }
 
-    // MARK: - Hook log
-
-    private static let hookLogFormatter: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
-
-    func appendLog(_ event: String) {
-        // 目錄 `~/.atelio/` 由 `AtelioPaths.ensureRoot()` 在 App 啟動早期建立，
-        // 本函式相信目錄已存在。
-        let logFile = AtelioPaths.hookLogPath
-        let line = "\(Self.hookLogFormatter.string(from: Date())) event=\(event) phase=\(phase)\n"
-        if let handle = try? FileHandle(forWritingTo: logFile) {
-            handle.seekToEndOfFile()
-            handle.write(line.data(using: .utf8)!)
-            handle.closeFile()
-        } else {
-            try? line.write(to: logFile, atomically: true, encoding: .utf8)
-        }
-    }
 }

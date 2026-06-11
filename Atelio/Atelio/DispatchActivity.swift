@@ -20,7 +20,7 @@ final class DispatchActivity: ObservableObject {
     func begin() {
         dispatchPrecondition(condition: .onQueue(.main))
         activeDispatchCount += 1
-        AtelioConfig.debugLog("dispatch_activity_begin", ["count": activeDispatchCount])
+        AtelioLog.trace("dispatch_activity_begin", ["count": activeDispatchCount])
     }
 
     /// 離開一次 dispatch/wait（-1），必須在 main thread 呼叫
@@ -31,10 +31,10 @@ final class DispatchActivity: ObservableObject {
         dispatchPrecondition(condition: .onQueue(.main))
         if activeDispatchCount <= 0 {
             assertionFailure("DispatchActivity.end() underflow：begin/end 配對不對稱")
-            AtelioConfig.debugLog("dispatch_activity_underflow", [:])
+            AtelioLog.ops("dispatch_activity_underflow", [:])
             return
         }
         activeDispatchCount -= 1
-        AtelioConfig.debugLog("dispatch_activity_end", ["count": activeDispatchCount])
+        AtelioLog.trace("dispatch_activity_end", ["count": activeDispatchCount])
     }
 }

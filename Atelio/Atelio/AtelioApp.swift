@@ -36,8 +36,8 @@ struct AtelioApp: App {
         signal(SIGPIPE, SIG_IGN)
 
         // Bootstrap：確保 ~/.atelio/ 結構完整。必須在 AtelioConfig.load() /
-        // debugLog / IPCServer.start 之前，因為後續寫入點皆相信目錄已建立
-        // （僅 debugLog 保留 defensive mkdir 作為 bootstrap 失敗時的保險）。
+        // AtelioLog / IPCServer.start 之前，因為後續寫入點皆相信目錄已建立
+        // （僅 AtelioLog 保留 defensive mkdir 作為 bootstrap 失敗時的保險）。
         //
         // bin/ symlink 與 notify.sh 由 hook 機制使用：
         // - ~/.atelio/bin/atelio → 當前 bundle 內 AtelioCLI（每次啟動 force update，

@@ -157,7 +157,7 @@ enum AtelioShellEnv {
         do {
             try process.run()
         } catch {
-            AtelioConfig.debugLog("shellenv_fetch_failed", ["error": error.localizedDescription])
+            AtelioLog.ops("shellenv_fetch_failed", ["error": error.localizedDescription])
             return nil
         }
 
@@ -176,18 +176,18 @@ enum AtelioShellEnv {
         let exitOK = exitDone.wait(timeout: deadline) == .success
         guard readOK, exitOK else {
             terminateAndReap(process, readPipe: outputPipe, exitDone: exitDone)
-            AtelioConfig.debugLog("shellenv_fetch_timeout", [:])
+            AtelioLog.ops("shellenv_fetch_timeout", [:])
             return nil
         }
 
         guard process.terminationStatus == 0,
               let path = parseMarkedPath(output) else {
-            AtelioConfig.debugLog("shellenv_fetch_empty", ["status": Int(process.terminationStatus)])
+            AtelioLog.ops("shellenv_fetch_empty", ["status": Int(process.terminationStatus)])
             return nil
         }
 
         let cleaned = dedupePath(path)
-        AtelioConfig.debugLog("shellenv_resolved", ["path": cleaned])
+        AtelioLog.ops("shellenv_resolved", ["path": cleaned])
         return cleaned
     }
 

@@ -7,8 +7,9 @@ class IPCServer {
 
     static var socketPath: String { AtelioPaths.socketPath }
 
-    /// 暫時的回應 logging 目錄（設為 nil 關閉 logging）
-    static var responseLogDir: String? = "/Users/dark/work/macos-apps/atelio/temp_doc/0414_openclaw_denoise_test/raw"
+    /// 回應取樣目錄（去噪等實驗用，預設 nil = 關閉）。
+    /// 不屬於 log 體系：需要取樣時暫時改成目標路徑、實驗完改回 nil。
+    static var responseLogDir: String? = nil
 
     private let manager: TerminalManager
     private let dispatchActivity: DispatchActivity

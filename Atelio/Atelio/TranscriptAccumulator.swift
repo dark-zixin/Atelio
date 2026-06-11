@@ -28,7 +28,7 @@ class TranscriptAccumulator {
 
         guard let prev = prevFrameRows else {
             // 第一幀 → 記錄，不做其他事
-            AtelioConfig.debugLog("ta_first_frame", [
+            AtelioLog.trace("ta_first_frame", [
                 "rows": currRows.count,
                 "first3": currFirst3.prefix(120)
             ])
@@ -40,7 +40,7 @@ class TranscriptAccumulator {
         // 偵測 resize
         if let prevSize = prevFrameSize,
            (prevSize.cols != currentSize.cols || prevSize.rows != currentSize.rows) {
-            AtelioConfig.debugLog("ta_resize_detected", [
+            AtelioLog.trace("ta_resize_detected", [
                 "prevSize": "\(prevSize.cols)x\(prevSize.rows)",
                 "currSize": "\(currentSize.cols)x\(currentSize.rows)",
                 "appendedPrev": prev.count
@@ -56,7 +56,7 @@ class TranscriptAccumulator {
         let prevTopLines = prev.prefix(3).map { normalizeLine($0) }
         let currTopLines = currRows.prefix(3).map { normalizeLine($0) }
         if prevTopLines == currTopLines {
-            AtelioConfig.debugLog("ta_fast_path_skip", [
+            AtelioLog.trace("ta_fast_path_skip", [
                 "first3": currFirst3.prefix(120),
                 "transcriptSize": transcript.count
             ])
@@ -66,14 +66,14 @@ class TranscriptAccumulator {
         }
 
         // 頂部變了 → 做 suffix-prefix overlap
-        AtelioConfig.debugLog("ta_top_changed", [
+        AtelioLog.trace("ta_top_changed", [
             "prevFirst3": prevTopLines.joined(separator: "|").prefix(120),
             "currFirst3": currFirst3.prefix(120)
         ])
         let (departed, overlapFound) = findDepartedLines(prev: prev, curr: currRows)
 
         let meaningful = departed.filter { !normalizeLine($0).isEmpty }
-        AtelioConfig.debugLog("ta_departed_calculated", [
+        AtelioLog.trace("ta_departed_calculated", [
             "departedCount": departed.count,
             "meaningfulCount": meaningful.count,
             "overlapFound": overlapFound,
@@ -83,7 +83,7 @@ class TranscriptAccumulator {
         if !departed.isEmpty {
             if !meaningful.isEmpty {
                 appendToTranscript(departed)
-                AtelioConfig.debugLog("ta_appended", [
+                AtelioLog.trace("ta_appended", [
                     "appendedCount": departed.count,
                     "transcriptSize": transcript.count
                 ])

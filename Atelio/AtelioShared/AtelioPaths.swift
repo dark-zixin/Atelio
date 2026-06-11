@@ -23,14 +23,14 @@ public enum AtelioPaths {
         root.appendingPathComponent("config.json")
     }
 
-    /// Debug log：`~/.atelio/debug.log`
-    public static var debugLogPath: URL {
-        root.appendingPathComponent("debug.log")
+    /// 分層 log：`~/.atelio/atelio.log`（ops + trace 共用，由 AtelioLog 寫入與輪替）
+    public static var logPath: URL {
+        root.appendingPathComponent("atelio.log")
     }
 
-    /// Hook log：`~/.atelio/hook.log`
-    public static var hookLogPath: URL {
-        root.appendingPathComponent("hook.log")
+    /// 輪替後的舊 log：`~/.atelio/atelio.log.old`
+    public static var logRotatedPath: URL {
+        root.appendingPathComponent("atelio.log.old")
     }
 
     /// Hook 通知腳本：`~/.atelio/notify.sh`（App bootstrap 時根據 marker 比對寫入）
