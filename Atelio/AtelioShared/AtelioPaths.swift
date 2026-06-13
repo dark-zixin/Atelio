@@ -77,7 +77,7 @@ public enum AtelioPaths {
 
         event="${1:-unknown}"
         case "$event" in
-          turn_start|turn_end) ;;
+          turn_start|turn_end|approval_needed) ;;
           *) exit 0 ;;
         esac
 

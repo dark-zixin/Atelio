@@ -100,6 +100,9 @@ public enum IPCResult {
     public static let turnAborted = "turn_aborted"
     public static let turnAbortedHint = "The turn was forcibly ended by a reset command. The previous task did not finish normally — the output may be incomplete. The session is idle and ready for a new dispatch."
 
+    public static let approvalPending = "approval_pending"
+    public static let approvalPendingHint = "The worker is waiting for an approval decision — a permission prompt is currently on screen. The output shows the current screen including the prompt; read it to identify the options. Do NOT use dispatch here (it would mis-trigger the default option). Instead use send-keys to choose (e.g. a number to pick an option, or esc to cancel), then wait again to let the worker continue."
+
     // 非 dispatch/wait 的一般成功
     public static let ok = "ok"
     public static let okHint = "The operation completed successfully."

@@ -9,8 +9,8 @@ class TurnCoordinator {
 
     // MARK: - 型別
 
-    enum TurnPhase { case idle, working, draining }
-    enum TurnCompletionReason { case hookTurnEnded, quietWindowMet, processExited, aborted }
+    enum TurnPhase { case idle, working, waitingApproval, draining }
+    enum TurnCompletionReason { case hookTurnEnded, quietWindowMet, processExited, aborted, approvalNeeded }
 
     // MARK: - 公開狀態
 
@@ -96,17 +96,49 @@ class TurnCoordinator {
 
     func handleHookStart() {
         AtelioLog.trace("turn_hook_start_received", ["name": sessionName, "phase": phase, "hookSeen": hookSeen])
-        guard phase == .working else { return }
+        // 也接受 waitingApproval（與 handleHookEnd 已放寬的對稱）：handleApprovalNeeded 不要求
+        // hookSeen 就會把 phase 推到 waitingApproval，若 turn_start 在 IPC 層 late delivery、晚於
+        // approval_needed 抵達，這裡只認 .working 會把它丟掉、hookSeen 留 false，連帶後續 turn_end
+        // 也被 handleHookEnd 的 hookSeen 條件擋掉，turn 永遠收不到完成訊號。語意維持
+        // 「hookSeen = 本輪收過 turn_start」——phase 不動（仍由 approval 流程主導）、stableSince 不重置，
+        // 只是允許 late delivery 在 approval 中間態補登記。
+        guard phase == .working || phase == .waitingApproval else { return }
         hookSeen = true
         AtelioLog.trace("turn_hook_start_accepted", ["name": sessionName])
     }
 
     func handleHookEnd() {
         AtelioLog.trace("turn_hook_end_received", ["name": sessionName, "phase": phase, "hookSeen": hookSeen])
-        guard phase == .working, hookSeen else { return }
+        // 也接受 waitingApproval：worker 跳過 approval（主 AI 已 send-keys 處理）後續跑完
+        // 才送 turn_end，此時 phase 仍停在 waitingApproval，不能漏掉這個完成訊號。
+        guard phase == .working || phase == .waitingApproval, hookSeen else { return }
         phase = .draining
         stableSince = Date()
         AtelioLog.trace("turn_hook_end_accepted", ["name": sessionName])
+    }
+
+    /// 收到 approval_needed hook 事件：worker 跳出授權選單、turn 沒結束
+    /// （Stop / turn_end hook 不會觸發，畫面動畫又讓 quiet window 永不 met）。
+    /// 把 phase 標記為 waitingApproval 並**即時喚醒所有等待中的 dispatch/wait waiter**，
+    /// 讓主 AI 立刻拿到當前畫面（授權選單）去處理，不必空等到 timeout。
+    ///
+    /// 與 `complete` 的差異：**不結束 turn**——不停 timer、不設 completed、phase 不回 idle。
+    /// 主 AI 看選單 → send-keys 處理 → 重新 wait，會接回同一個 turn 後續的完成偵測
+    /// （worker 跑完送 turn_end → draining；或畫面穩定走 quiet window / 60s fallback 兜底）。
+    /// 離開 approval 沒有對應 hook 事件（實測證實），所以這裡不追蹤離開、不維護長期狀態。
+    func handleApprovalNeeded() {
+        AtelioLog.trace("turn_approval_received", ["name": sessionName, "phase": phase, "hookSeen": hookSeen])
+        // 只在 turn 進行中（working / 已在 waitingApproval 的同 turn 二次 approval）才處理；
+        // idle / draining 視為過時事件忽略。
+        guard phase == .working || phase == .waitingApproval else { return }
+        phase = .waitingApproval
+        completionReason = .approvalNeeded
+        AtelioLog.ops("turn_approval_needed", ["name": sessionName])
+        // 喚醒當前 waiter 但清空陣列（不結束 turn）：清空讓後續重新 wait 取得新的
+        // semaphore，避免同一個 semaphore 被之後的事件（turn_end / 二次 approval）重複 signal。
+        let sems = completionSemaphores
+        completionSemaphores = []
+        sems.forEach { $0.signal() }
     }
 
     func handleProcessExit() {
@@ -122,7 +154,7 @@ class TurnCoordinator {
     }
 
     /// 畫面最近一次變化距今的秒數（reset 穩定閘用）。
-    /// timer 只在 working/draining 期間運行，idle 時數值凍結——
+    /// timer 在所有非 idle phase（working / waitingApproval / draining）運行，idle 時數值凍結——
     /// 呼叫端（handleReset）僅在 phase 非 idle 時讀取，此時 tick 每 100-200ms 更新中。
     var secondsSinceScreenChange: TimeInterval {
         Date().timeIntervalSince(stableSince)
@@ -185,7 +217,11 @@ class TurnCoordinator {
 
         // 5. 判斷完成
         switch phase {
-        case .working:
+        case .working, .waitingApproval:
+            // waitingApproval 與 working 共用完成偵測：
+            // - approval 已被主 AI 處理、worker 續跑跑完 → 正常路徑是 turn_end → draining；
+            //   走不到 hook 時這裡的 quiet window / 60s fallback 仍能收束（與一般 turn 一致）。
+            // - 主 AI 遲遲不處理 approval → 同樣由 fallback 兜底，turn 不會永久卡在 waitingApproval。
             if !hookSeen {
                 // 非 hook session：5 秒穩定 + 畫面有變
                 if stableMs >= 5000 && lastHash != preDispatchHash {

@@ -408,6 +408,7 @@ class IPCServer {
             switch event {
             case "turn_start": session.handleTurnStart()
             case "turn_end": session.handleTurnEnd()
+            case "approval_needed": session.handleApprovalNeeded()
             default: break
             }
         }
@@ -510,6 +511,10 @@ class IPCServer {
                     response = IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint, output: output)
                 case .aborted:
                     response = IPCResult.response(IPCResult.turnAborted, IPCResult.turnAbortedHint, output: output)
+                case .approvalNeeded:
+                    // worker 跳 approval 選單、turn 未結束：waiter 被即時喚醒，output 帶當前
+                    // 畫面（含選單）讓主 AI 直接判斷選項，不必再 screen。處理（send-keys）後重新 wait。
+                    response = IPCResult.response(IPCResult.approvalPending, IPCResult.approvalPendingHint, output: output)
                 default:
                     response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
                 }
@@ -667,6 +672,10 @@ class IPCServer {
                     response = IPCResult.response(IPCResult.processExited, IPCResult.processExitedHint, output: output)
                 case .aborted:
                     response = IPCResult.response(IPCResult.turnAborted, IPCResult.turnAbortedHint, output: output)
+                case .approvalNeeded:
+                    // worker 跳 approval 選單、turn 未結束：waiter 被即時喚醒，output 帶當前
+                    // 畫面（含選單）讓主 AI 直接判斷選項，不必再 screen。處理（send-keys）後重新 wait。
+                    response = IPCResult.response(IPCResult.approvalPending, IPCResult.approvalPendingHint, output: output)
                 default:
                     response = IPCResult.response(IPCResult.quietWindowMet, IPCResult.quietWindowMetHint, output: output)
                 }

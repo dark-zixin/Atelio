@@ -492,4 +492,8 @@ class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDelegate 
     func handleTurnEnd() {
         coordinator.handleHookEnd()
     }
+
+    func handleApprovalNeeded() {
+        coordinator.handleApprovalNeeded()
+    }
 }

@@ -32,7 +32,9 @@ struct WaitCommand: ParsableCommand {
             fputs(response.resultHint, stderr)
             fputs("\n", stderr)
             throw ExitCode(1)
-        case IPCResult.deadlineReached, IPCResult.turnAborted:
+        case IPCResult.deadlineReached, IPCResult.turnAborted, IPCResult.approvalPending:
+            // approval_pending：worker 跳 approval 選單等處置，帶 output（含選單）。
+            // 非錯誤、非完成的中間態，比照 deadline/aborted 印 hint + exit 1。
             fputs("（\(response.resultHint)）\n", stderr)
             throw ExitCode(1)
         default:

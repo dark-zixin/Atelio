@@ -8,7 +8,7 @@ struct NotifyCommand: ParsableCommand {
         abstract: "發送 hook 事件通知給 Atelio App"
     )
 
-    @Argument(help: "事件名稱（turn_start / turn_end）")
+    @Argument(help: "事件名稱（turn_start / turn_end / approval_needed）")
     var event: String
 
     func run() throws {
