@@ -9,7 +9,9 @@ A macOS container for running multiple AI CLIs (Claude Code, Codex, Gemini, …)
 
 **[Download Latest Release](https://github.com/dark-zixin/Atelio/releases/latest)**
 
-<!-- hero image / demo: TBD -->
+<p align="center">
+  <img src="assets/atelio-demo.gif" alt="Atelio demo" width="900">
+</p>
 
 ## The Problem
 

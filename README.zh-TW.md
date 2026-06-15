@@ -9,7 +9,9 @@
 
 **[下載最新版本](https://github.com/dark-zixin/Atelio/releases/latest)**
 
-<!-- hero image / demo: TBD -->
+<p align="center">
+  <img src="assets/atelio-demo.gif" alt="Atelio 操作示範" width="900">
+</p>
 
 ## 解決什麼問題
 
