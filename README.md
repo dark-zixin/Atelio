@@ -5,7 +5,7 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![macOS 26.4+](https://img.shields.io/badge/macOS-26.4%2B-brightgreen)
 
-A macOS container for running multiple AI CLIs (Claude Code, Codex, Gemini, …) as workers in terminal windows, driven by your main AI through a simple `atelio` command line. Orchestrate many AI workers in parallel — like a PM dispatching tasks.
+A macOS container that runs multiple AI CLIs (Claude Code, Codex, Gemini, …) as workers in terminal windows. Your main AI drives them through a single `atelio` command-line tool — orchestrating many workers in parallel, like a PM dispatching tasks.
 
 **[Download Latest Release](https://github.com/dark-zixin/Atelio/releases/latest)**
 
@@ -66,7 +66,7 @@ Then just tell your main AI in natural language: "open a codex worker in /repo a
 
 ## Usage
 
-Day-to-day operation goes through your main AI via the skill; you just keep Atelio running. The underlying CLI lives at the fixed path `~/.atelio/bin/atelio`:
+Day-to-day, you drive everything through your main AI (which uses the skill) and just keep Atelio running. The underlying CLI lives at the fixed path `~/.atelio/bin/atelio`:
 
 | Command | Purpose |
 |---|---|
