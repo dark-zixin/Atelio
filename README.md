@@ -29,10 +29,6 @@ You want several AI CLIs working at once — one reviewing code, one writing tes
 
 Your main AI acts as the orchestrator (PM); Atelio manages the terminals, relays text, and reports status — it never routes or decides for you.
 
-## Screenshots
-
-<!-- screenshots: TBD -->
-
 ## Features
 
 - **Multi-session terminal container** with automatic layout (1 fullscreen / 2 side-by-side / 2×2 grid)

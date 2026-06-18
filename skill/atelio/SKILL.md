@@ -174,6 +174,8 @@ Atelio 靠白名單判斷 foreground 是否為 AI CLI，決定是否切片本輪
 
 `notify.sh` 由 Atelio 預裝，非 Atelio session 時靜默略過；對該 CLI 全域設定一次。Atelio server 只認這三個抽象事件、不分辨來自哪個 CLI。
 
+**安裝後驗證**：派一個簡單任務，確認回傳 `hook_turn_ended`（而非 `quiet_window_met`）。若 hook 沒觸發，該 CLI 可能有額外的啟動或授權步驟——視情況判斷處理（例如首次需使用者確認、需開啟某設定等），不同 CLI 做法不同。
+
 **config.json 格式（hook_skip 欄位範例）**：
 ```json
 {
